@@ -58,6 +58,9 @@ public:
     std::unique_ptr<Carrier> borrow(std::string& error);
 
     GuestMemory& memory();
+    // Redirects guest file operations under one directory to another (Process::add_path_alias):
+    // the launcher's arm64 proxy directory stands for the plugin's arm32 libraries.
+    void add_path_alias(std::string guest_prefix, std::string host_prefix);
     // Valid after a successful start().
     const zb_service_api& service_api() const;
     // Real guest pthreads (service, carriers, guest-created threads); borrowers are not counted.

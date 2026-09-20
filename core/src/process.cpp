@@ -230,9 +230,34 @@ bool Process::overlaps_textrel_range(std::uint32_t start, std::uint64_t length) 
     return false;
 }
 
+void Process::add_path_alias(std::string guest_prefix, std::string host_prefix) {
+    if (guest_prefix.empty() || host_prefix.empty()) return;
+    std::lock_guard<std::mutex> lock(path_aliases_mutex_);
+    for (auto& [from, to] : path_aliases_) {
+        if (from == guest_prefix) {
+            to = std::move(host_prefix);
+            return;
+        }
+    }
+    path_aliases_.emplace_back(std::move(guest_prefix), std::move(host_prefix));
+}
+
 std::string Process::translate_path(const char* guest_path) const {
     const std::string_view path(guest_path);
     if (path == "/proc/self/exe") return exe_path_;
+    {
+        std::lock_guard<std::mutex> lock(path_aliases_mutex_);
+        const std::string* best_from = nullptr;
+        const std::string* best_to = nullptr;
+        for (const auto& [from, to] : path_aliases_) {
+            if (path.substr(0, from.size()) != from) continue;
+            if (best_from == nullptr || from.size() > best_from->size()) {
+                best_from = &from;
+                best_to = &to;
+            }
+        }
+        if (best_from != nullptr) return *best_to + std::string(path.substr(best_from->size()));
+    }
     if (!sysroot_.empty()) {
         for (const auto& m : kPathMappings) {
             if (path.substr(0, m.guest_prefix.size()) == m.guest_prefix) {

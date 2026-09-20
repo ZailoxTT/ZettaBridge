@@ -488,6 +488,10 @@ GuestMemory& LibraryRuntime::memory() {
     return impl_->process.memory();
 }
 
+void LibraryRuntime::add_path_alias(std::string guest_prefix, std::string host_prefix) {
+    impl_->process.add_path_alias(std::move(guest_prefix), std::move(host_prefix));
+}
+
 const zb_service_api& LibraryRuntime::service_api() const {
     return impl_->api;
 }

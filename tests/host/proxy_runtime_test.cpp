@@ -92,6 +92,11 @@ public:
         return true;
     }
 
+    void add_path_alias(const std::string& guest_prefix, const std::string& host_prefix) override {
+        std::lock_guard<std::mutex> lock(mutex_);
+        aliases.emplace_back(guest_prefix, host_prefix);
+    }
+
     zb::JniLoadReport load(JniBackend::Env env, const std::string& guest_library) override {
         std::unique_lock<std::mutex> lock(mutex_);
         CHECK(env == kEnv);
@@ -138,6 +143,7 @@ public:
     std::string start_error;
     std::chrono::milliseconds start_delay{0};
     std::vector<std::string> loads;
+    std::vector<std::pair<std::string, std::string>> aliases;
     std::map<std::string, zb::JniLoadReport> reports;
     std::map<std::string, int> gated;
 
@@ -224,6 +230,11 @@ void test_bad_runtime_layout(const fs::path& base) {
     touch(tree.files / "zb/sysroot/system/bin/linker");
     CHECK(runtime.activate_plugin(kEnv, tree.root("com.example.a").string(), 16, kLoader, error));
     CHECK(engine.binds == 1 && engine.bound_loader == kLoader);
+    // Activation redirects the plugin's arm64 proxy directory at its arm32 libraries, so a guest
+    // that opens a file beside "its own" library reaches the real one.
+    CHECK(engine.aliases.size() == 1);
+    CHECK(engine.aliases[0].first == tree.root("com.example.a").string() + "/proxy/");
+    CHECK(engine.aliases[0].second == tree.root("com.example.a").string() + "/lib/");
 }
 
 void test_activation_and_loads(const Tree& tree) {

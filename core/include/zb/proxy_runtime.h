@@ -75,6 +75,12 @@ public:
     // Loads, binds and runs JNI_OnLoad on the calling thread. A failed load leaves no Java
     // exception pending.
     virtual JniLoadReport load(JniBackend::Env env, const std::string& guest_library) = 0;
+    // Redirects guest file operations under one directory to another. Default: nothing, for an
+    // engine with no guest runtime behind it.
+    virtual void add_path_alias(const std::string& guest_prefix, const std::string& host_prefix) {
+        (void)guest_prefix;
+        (void)host_prefix;
+    }
 };
 
 struct ProxyLoadResult {
@@ -159,6 +165,7 @@ public:
     bool bind_class_loader(JniBackend::Env env, JniBackend::Ref loader, std::string& error) override;
     bool start(const LibraryRuntimeOptions& options, std::string& error) override;
     JniLoadReport load(JniBackend::Env env, const std::string& guest_library) override;
+    void add_path_alias(const std::string& guest_prefix, const std::string& host_prefix) override;
 
     LibraryRuntime& runtime() { return *runtime_; }
     HostJni& host_jni() { return *host_jni_; }

@@ -34,6 +34,28 @@ int main() {
           std::string("/system/fonts/Roboto-Regular.ttf"));
     CHECK(process.translate_path("/system/etc/fonts.xml") == std::string("/system/etc/fonts.xml"));
 
+    // An alias redirects a whole directory, and wins over the sysroot rules: ART loads an arm64
+    // proxy library, so paths reaching the guest from Java name the proxy directory while the
+    // arm32 files live beside it.
+    process.add_path_alias("/data/user/0/app/files/plugins/com.example/proxy/",
+                           "/data/user/0/app/files/plugins/com.example/lib/");
+    CHECK(process.translate_path("/data/user/0/app/files/plugins/com.example/proxy/libil2cpp.so") ==
+          std::string("/data/user/0/app/files/plugins/com.example/lib/libil2cpp.so"));
+    // A path that only shares the prefix's parent is untouched.
+    CHECK(process.translate_path("/data/user/0/app/files/plugins/com.example/assets/data") ==
+          std::string("/data/user/0/app/files/plugins/com.example/assets/data"));
+    // The longest matching alias wins, and re-adding a prefix replaces its target.
+    process.add_path_alias("/data/user/0/app/files/plugins/com.example/proxy/sub/", "/tmp/sub/");
+    CHECK(process.translate_path("/data/user/0/app/files/plugins/com.example/proxy/sub/thing") ==
+          std::string("/tmp/sub/thing"));
+    process.add_path_alias("/data/user/0/app/files/plugins/com.example/proxy/sub/", "/tmp/other/");
+    CHECK(process.translate_path("/data/user/0/app/files/plugins/com.example/proxy/sub/thing") ==
+          std::string("/tmp/other/thing"));
+    // An alias applies to a system path too, before the sysroot mapping.
+    process.add_path_alias("/system/fonts/", "/tmp/fonts/");
+    CHECK(process.translate_path("/system/fonts/Roboto-Regular.ttf") ==
+          std::string("/tmp/fonts/Roboto-Regular.ttf"));
+
     // Paths outside the mapped prefixes are never touched.
     CHECK(process.translate_path("/data/data/com.example/files/thing.ttf") ==
           std::string("/data/data/com.example/files/thing.ttf"));

@@ -188,6 +188,11 @@ bool ProxyRuntime::activate_plugin(JniBackend::Env env, const std::string& plugi
     if (!active_) {
         active_ = true;
         plugin_root_ = root;
+        // Java hands native code the application's library directory, which for a plugin is the
+        // arm64 proxy directory. The arm32 files it stands for live next to it, so a guest that
+        // opens something beside "its own" library finds the real thing (IL2CPP does exactly
+        // this and otherwise reports that it cannot load).
+        engine_.add_path_alias(root + "/proxy/", root + "/lib/");
         target_sdk_ = target_sdk;
         options_ = std::move(options);
         log("guest JNI runtime: plugin %s activated (targetSdk %u)", root.c_str(), target_sdk);
@@ -380,6 +385,10 @@ bool GuestJniEngine::start(const LibraryRuntimeOptions& options, std::string& er
     // Process-lifetime, like the runtime itself: no shutdown path, started once.
     start_hang_watchdog();
     return true;
+}
+
+void GuestJniEngine::add_path_alias(const std::string& guest_prefix, const std::string& host_prefix) {
+    if (runtime_ != nullptr) runtime_->add_path_alias(guest_prefix, host_prefix);
 }
 
 JniLoadReport GuestJniEngine::load(JniBackend::Env env, const std::string& guest_library) {

@@ -126,6 +126,14 @@ public:
     // Maps absolute guest paths of the Android system (/system, /apex, /vendor, ...) into the
     // sysroot, and /proc/self/exe to the guest executable. Other paths are returned unchanged.
     std::string translate_path(const char* guest_path) const;
+
+    // Redirects one directory of guest file operations to another. The launcher gives ART an
+    // arm64 proxy library per guest library, so paths that reach the guest from Java (the
+    // application's native library directory, most of all) name the proxy directory; the arm32
+    // files it stands for live elsewhere. Without this, a guest that opens a file next to "its
+    // own" library finds the proxy directory, which holds no arm32 anything: IL2CPP reports that
+    // it cannot load. Aliases win over the sysroot mappings, and the longest prefix wins.
+    void add_path_alias(std::string guest_prefix, std::string host_prefix);
     // Host path of the guest executable, as reported by /proc/self/exe.
     const std::string& exe_path() const { return exe_path_; }
     // Opens a synthesized /proc file (/proc/self/maps, /proc/self/stat, /proc/cpuinfo) that
@@ -209,6 +217,8 @@ private:
     std::set<std::uint64_t> seen_;
     std::vector<FileMapping> file_mappings_;
     std::vector<std::pair<std::uint32_t, std::uint32_t>> textrel_ranges_;
+    mutable std::mutex path_aliases_mutex_;
+    std::vector<std::pair<std::string, std::string>> path_aliases_;
     std::string sysroot_;
     std::string exe_path_;
     bool precise_faults_ = false;
