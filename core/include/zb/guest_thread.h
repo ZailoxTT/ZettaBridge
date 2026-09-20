@@ -26,6 +26,11 @@ class Cp15;
 // svc immediate used to return from a host->guest call.
 inline constexpr std::uint32_t kHostReturnSwi = 0x5AFFFF;
 inline constexpr std::uint32_t kHostReturnAddress = 0xFFFF0F00;
+// The host signal that breaks a blocking host syscall so a guest signal can be delivered. It is
+// never shown to the guest and never forwarded: its handler does nothing, and returning from it
+// leaves the interrupted syscall with EINTR. ZB_INTERRUPT_SIGNAL overrides the default.
+int host_interrupt_signal();
+
 // Translated-code cache of one JIT. Carrier JITs only run thread start-up and parking.
 inline constexpr std::size_t kDefaultCodeCacheSize = 32 * 1024 * 1024;
 inline constexpr std::size_t kCarrierCodeCacheSize = 2 * 1024 * 1024;
@@ -79,12 +84,23 @@ public:
     // Drop translated code for [addr, addr + len). Safe to call from other host threads.
     void invalidate(std::uint32_t addr, std::uint32_t len);
 
-    // Queues a signal for this thread, interrupts its JIT and wakes park(). Async-signal-safe.
+    // Queues a signal for this thread, interrupts its JIT, wakes park() and interrupts a host
+    // syscall this thread blocks in. Async-signal-safe.
     void post_signal(const g::siginfo32& info);
     // Takes the lowest-numbered pending signal not in `blocked`; false if there is none.
     bool take_signal(std::uint64_t blocked, g::siginfo32& out);
     bool has_pending_signals(std::uint64_t blocked) const { return (pending_signals_.load() & ~blocked) != 0; }
     std::uint64_t pending_signals() const { return pending_signals_.load(); }
+
+    // Marks the thread as blocked in a host syscall made on the guest's behalf. post_signal()
+    // then breaks that syscall with the reserved host signal, so a guest signal reaches a thread
+    // asleep in a futex. Without it the thread sleeps until the futex is woken, and a guest that
+    // stops its threads with a signal (the Boehm collector of IL2CPP does) never proceeds.
+    void begin_blocking();
+    void end_blocking();
+    bool blocking() const { return blocking_.load() != 0; }
+    // Breaks this thread's blocking host syscall, if it is in one. Async-signal-safe.
+    void interrupt();
 
     // Parking for a thread that waits inside a host call (library runtime service and carriers).
     // wake() and post_signal() change the token; park(token) sleeps only while the token is
@@ -97,6 +113,9 @@ public:
 
     // Emulated per-thread kernel state.
     std::uint64_t sigmask = 0;
+    // The mask a signal frame must record instead of `sigmask`, set while sigsuspend runs with a
+    // temporary mask: the handler runs under the temporary mask and sigreturn restores this one.
+    std::optional<std::uint64_t> saved_sigmask;
     g::stack32 altstack{0, 2 /* SS_DISABLE */, 0};
     std::uint32_t clear_child_tid = 0;
     int exit_status = 0;
@@ -141,6 +160,7 @@ private:
     std::array<g::siginfo32, 65> pending_info_{};
     // futex word; std::atomic<std::uint32_t> has the layout of std::uint32_t.
     std::atomic<std::uint32_t> park_word_{0};
+    std::atomic<std::uint32_t> blocking_{0};
 };
 
 }  // namespace zb

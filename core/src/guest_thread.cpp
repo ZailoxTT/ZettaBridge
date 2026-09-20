@@ -163,6 +163,21 @@ void GuestThread::invalidate(std::uint32_t addr, std::uint32_t len) {
     jit_->InvalidateCacheRange(addr, len);
 }
 
+void GuestThread::begin_blocking() {
+    blocking_.store(1);
+}
+
+void GuestThread::end_blocking() {
+    blocking_.store(0);
+}
+
+void GuestThread::interrupt() {
+    // seq_cst: the poster sets the pending bit before reading this flag, and the waiter sets the
+    // flag before it checks for pending signals, so at least one of the two sees the other.
+    if (blocking_.load() == 0 || tid == 0) return;
+    ::syscall(SYS_tgkill, ::getpid(), tid, host_interrupt_signal());
+}
+
 void GuestThread::post_signal(const g::siginfo32& info) {
     const int sig = info.si_signo;
     if (sig < 1 || sig > 64) return;
@@ -170,6 +185,7 @@ void GuestThread::post_signal(const g::siginfo32& info) {
     pending_signals_.fetch_or(1ULL << (sig - 1));
     jit_->HaltExecution(kInterruptHalt);
     wake();
+    interrupt();
 }
 
 void GuestThread::park(std::uint32_t token) {

@@ -1,0 +1,3 @@
+sleeper woke after 2 signals
+sigsuspend returned -1 errno EINTR after 1 signals
+SIGUSR2 blocked again: 1

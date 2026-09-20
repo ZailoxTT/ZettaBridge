@@ -80,6 +80,27 @@ struct Ctx {
     bool no_result = false;
 };
 
+// Marks the thread as asleep in a host syscall for as long as it lives, so a guest signal posted
+// to this thread breaks that syscall instead of waiting for it to end on its own.
+class BlockingSection {
+public:
+    explicit BlockingSection(GuestThread& thread) : thread_(thread) { thread_.begin_blocking(); }
+    ~BlockingSection() { thread_.end_blocking(); }
+    BlockingSection(const BlockingSection&) = delete;
+    BlockingSection& operator=(const BlockingSection&) = delete;
+
+private:
+    GuestThread& thread_;
+};
+
+// True when the thread has a signal the guest can act on right now. A syscall interrupted for any
+// other reason is restarted rather than handed an EINTR the guest never asked for.
+constexpr std::uint64_t kUnblockableMask = (1ULL << (SIGKILL - 1)) | (1ULL << (SIGSTOP - 1));
+
+bool has_deliverable_signal(GuestThread& thread) {
+    return thread.has_pending_signals(thread.sigmask);
+}
+
 // ZB_STRACE=1 logs every guest syscall with its first four arguments and result.
 bool trace_enabled() {
     static const bool enabled = std::getenv("ZB_STRACE") != nullptr;
@@ -357,7 +378,7 @@ std::int32_t sys_rt_sigprocmask(Ctx& c) {
         case SIG_SETMASK: mask = set; break;
         default: return -EINVAL;
         }
-        mask &= ~((1ULL << (SIGKILL - 1)) | (1ULL << (SIGSTOP - 1)));
+        mask &= ~kUnblockableMask;
         c.thread.sigmask = mask;
     }
     if (c.a[2] != 0 && !write_guest(c.mem, c.a[2], old_mask)) return -EFAULT;
@@ -403,6 +424,33 @@ std::int32_t sys_send_signal(Ctx& c, bool process_directed, std::int32_t tgid, s
     if (sig == 0) return c.proc.find_thread(tid) != nullptr ? 0 : -ESRCH;
     // Lookup and post under one lock: the target may be exiting or a carrier lease releasing.
     return c.proc.post_signal_to(tid, info) ? 0 : -ESRCH;
+}
+
+// Waits with a temporary signal mask until this thread has a signal to act on. The guest sees the
+// mask it asked for while its handler runs, and sigreturn restores the mask it had before.
+std::int32_t sys_sigsuspend(Ctx& c, bool rt) {
+    std::uint64_t mask = 0;
+    if (rt) {
+        // rt_sigsuspend(set, sigsetsize): the size is the second argument, not the third.
+        if (c.a[1] != 8) return -EINVAL;
+        if (!read_guest(c.mem, c.a[0], mask)) return -EFAULT;
+    } else {
+        // The legacy call takes the mask itself in the third argument, as one 32-bit set.
+        mask = c.a[2];
+    }
+    const std::uint64_t saved = c.thread.sigmask;
+    c.thread.sigmask = mask & ~kUnblockableMask;
+    {
+        BlockingSection blocking(c.thread);
+        while (!has_deliverable_signal(c.thread)) {
+            const std::uint32_t token = c.thread.park_token();
+            if (has_deliverable_signal(c.thread)) break;
+            c.thread.park(token);
+        }
+    }
+    // The handler runs under the temporary mask; its frame records the one to return to.
+    c.thread.saved_sigmask = saved;
+    return -EINTR;
 }
 
 std::int32_t sys_clock_get(Ctx& c, bool res, bool time64) {
@@ -563,7 +611,17 @@ std::int32_t sys_futex(Ctx& c, bool time64) {
             if (!read_timespec(c.mem, c.a[3], time64, ts)) return -EFAULT;
             tsp = &ts;
         }
-        return result_of(::syscall(SYS_futex, uaddr, op, c.a[2], tsp, nullptr, c.a[5]));
+        BlockingSection blocking(c.thread);
+        for (;;) {
+            // Ordered against post_signal(): the flag above is set before this check, and a poster
+            // sets the pending bit before it reads the flag, so a signal is never missed here.
+            if (has_deliverable_signal(c.thread)) return -EINTR;
+            const std::int32_t res = result_of(::syscall(SYS_futex, uaddr, op, c.a[2], tsp, nullptr, c.a[5]));
+            if (res != -EINTR) return res;
+            if (has_deliverable_signal(c.thread)) return -EINTR;
+            // Interrupted by our own wakeup with nothing to deliver: wait again. A timed wait
+            // restarts with its full timeout, as a restarted guest wait would.
+        }
     }
     case FUTEX_WAKE:
     case FUTEX_WAKE_BITSET:
@@ -1515,6 +1573,8 @@ bool handle_syscall(Process& proc, GuestThread& thread) {
     }
     case NR_getpgid: res = result_of(::getpgid(static_cast<pid_t>(c.a[0]))); break;
     case NR_setsid: res = result_of(::setsid()); break;
+    case NR_rt_sigsuspend: res = sys_sigsuspend(c, true); break;
+    case NR_sigsuspend: res = sys_sigsuspend(c, false); break;
     case NR_rt_sigpending: {
         const std::uint64_t pending = thread.pending_signals();
         if (c.a[1] != 8) {

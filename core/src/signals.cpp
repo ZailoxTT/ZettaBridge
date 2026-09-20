@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include <atomic>
+#include <cstdlib>
 #include <cstring>
 
 #include "zb/log.h"
@@ -126,6 +127,21 @@ void Process::clear_process_signal_target(GuestThread* thread) {
     }
 }
 
+int host_interrupt_signal() {
+    static const int sig = [] {
+        if (const char* name = std::getenv("ZB_INTERRUPT_SIGNAL")) {
+            const int chosen = std::atoi(name);
+            if (chosen >= SIGRTMIN && chosen <= SIGRTMAX) return chosen;
+        }
+        // The highest real-time signal: bionic and the ART runtime take theirs from the bottom of
+        // the range (POSIX timers, debuggerd, the profiler).
+        return SIGRTMAX;
+    }();
+    return sig;
+}
+
+void interrupt_handler(int) {}  // NOLINT: the empty body is the point
+
 void Process::install_host_signal_forwarding() {
     struct sigaction sa;
     std::memset(&sa, 0, sizeof sa);
@@ -133,6 +149,13 @@ void Process::install_host_signal_forwarding() {
     sa.sa_flags = SA_SIGINFO;  // no SA_RESTART: blocked host syscalls return EINTR to the guest
     sigemptyset(&sa.sa_mask);
     for (int sig : kForwardedHostSignals) sigaction(sig, &sa, nullptr);
+
+    struct sigaction interrupt;
+    std::memset(&interrupt, 0, sizeof interrupt);
+    interrupt.sa_handler = interrupt_handler;
+    interrupt.sa_flags = 0;  // no SA_RESTART: the point is to end the syscall with EINTR
+    sigemptyset(&interrupt.sa_mask);
+    sigaction(host_interrupt_signal(), &interrupt, nullptr);
 }
 
 bool Process::dispatch_pending_signals(GuestThread& thread) {
@@ -197,11 +220,13 @@ bool Process::deliver_signal(GuestThread& thread, const g::siginfo32& info, bool
     g::ucontext32 uc{};
     uc.uc_stack = alt;
     uc.uc_stack.ss_flags = alt_enabled ? (on_altstack ? kSsOnstack : 0) : kSsDisable;
-    uc.uc_mcontext.oldmask = static_cast<std::uint32_t>(thread.sigmask);
+    const std::uint64_t frame_mask = thread.saved_sigmask.value_or(thread.sigmask);
+    thread.saved_sigmask.reset();
+    uc.uc_mcontext.oldmask = static_cast<std::uint32_t>(frame_mask);
     for (int i = 0; i < 16; ++i) uc.uc_mcontext.regs[i] = regs[i];
     uc.uc_mcontext.cpsr = thread.cpsr();
     if (sig == SIGSEGV || sig == SIGBUS) uc.uc_mcontext.fault_address = info.fields[0];
-    uc.uc_sigmask = thread.sigmask;
+    uc.uc_sigmask = frame_mask;
     uc.uc_regspace[0] = kVfpFrameMagic;
     std::memcpy(&uc.uc_regspace[1], thread.ext_regs().data(), kVfpWords * sizeof(std::uint32_t));
     uc.uc_regspace[1 + kVfpWords] = thread.fpscr();
