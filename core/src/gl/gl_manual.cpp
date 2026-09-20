@@ -63,7 +63,28 @@ struct GlThreadState {
     std::unordered_map<GLuint, std::unordered_map<GLint, std::uint64_t>> uniforms;
     std::unordered_map<GLenum, std::uint32_t> strings;
     std::unordered_map<std::uint64_t, std::uint32_t> indexed_strings;
+    // The driver's extensions minus the ones this bridge cannot serve, in driver order.
+    std::vector<std::string> extensions;
+    bool extensions_known = false;
 };
+
+constexpr GLenum kGlExtensions = 0x1F03;
+constexpr GLenum kGlNumExtensions = 0x821D;
+
+// Extensions whose entry points this bridge does not serve. A driver advertises what the hardware
+// can do, and an engine that reads an extension out of the string calls its functions without
+// checking what eglGetProcAddress returned: Unity jumps straight into a null pointer that way.
+// Dropping them from the string is what a driver without the extension already looks like.
+constexpr std::string_view kUnsupportedExtensions[] = {
+#define ZB_GL_UNSUPPORTED_EXTENSION(name) name,
+#include "gen/gl_unsupported_extensions.inc"
+#undef ZB_GL_UNSUPPORTED_EXTENSION
+};
+
+bool extension_served(std::string_view name) {
+    // The generated list is sorted, so the lookup is a binary search.
+    return !std::binary_search(std::begin(kUnsupportedExtensions), std::end(kUnsupportedExtensions), name);
+}
 
 thread_local GlThreadState t_state;
 
@@ -74,6 +95,53 @@ GlThreadState& state(const HostGl& host) {
     }
     return t_state;
 }
+
+// The driver's extensions this bridge can serve, in the order the driver lists them. GLES 3.0
+// enumerates them one by one; a GLES 2.0 context has only the single space-separated string.
+const std::vector<std::string>& served_extensions(HostGl& host) {
+    GlThreadState& current = state(host);
+    if (current.extensions_known) return current.extensions;
+    current.extensions_known = true;
+
+    GLint count = 0;
+    host.backend().glGetIntegerv(kGlNumExtensions, &count);
+    if (count > 0) {
+        for (GLint i = 0; i < count; ++i) {
+            const GLubyte* entry = host.backend().glGetStringi(kGlExtensions, static_cast<GLuint>(i));
+            if (entry == nullptr) continue;
+            const std::string name(reinterpret_cast<const char*>(entry));
+            if (extension_served(name)) current.extensions.push_back(name);
+        }
+        return current.extensions;
+    }
+    const GLubyte* all = host.backend().glGetString(kGlExtensions);
+    if (all == nullptr) return current.extensions;
+    std::string_view rest(reinterpret_cast<const char*>(all));
+    while (!rest.empty()) {
+        const std::size_t space = rest.find(' ');
+        const std::string_view name = rest.substr(0, space);
+        if (!name.empty() && extension_served(name)) current.extensions.emplace_back(name);
+        if (space == std::string_view::npos) break;
+        rest.remove_prefix(space + 1);
+    }
+    return current.extensions;
+}
+
+// Copies a host string into guest memory and answers the call with its guest address.
+std::uint32_t answer_with_string(HostGl& host, HostGl::Call& call, std::string_view text) {
+    const auto address = host.allocate_guest(text.size() + 1);
+    std::uint8_t* destination =
+        address ? host.runtime().memory().host_ptr(*address, text.size() + 1, kPageRead | kPageWrite) : nullptr;
+    if (destination == nullptr) {
+        host.reject(call, kGlOutOfMemory, "guest allocation for driver string failed");
+        return 0;
+    }
+    std::memcpy(destination, text.data(), text.size());
+    destination[text.size()] = 0;
+    call.set_result(*address);
+    return *address;
+}
+
 
 std::uint64_t uniform_components(GLenum type) {
     switch (type) {
@@ -495,6 +563,13 @@ bool zbgl_manual_glGetFloatv(HostGl& host, HostGl::Call& call) {
 }
 
 bool zbgl_manual_glGetIntegerv(HostGl& host, HostGl::Call& call) {
+    if (call.scalar<GLenum>(0) == kGlNumExtensions) {
+        // Must match what glGetStringi hands out, or the guest reads past the filtered list.
+        GLint* data = call.pointer<GLint>(1, 1, kPageRead | kPageWrite);
+        if (!call.valid()) return true;
+        *data = static_cast<GLint>(served_extensions(host).size());
+        return true;
+    }
     return serve_pname(host, call, &GlBackend::glGetIntegerv);
 }
 
@@ -600,6 +675,15 @@ bool zbgl_manual_glGetString(HostGl& host, HostGl::Call& call) {
     const auto cached = current.strings.find(name);
     if (cached != current.strings.end()) {
         call.set_result(cached->second);
+        return true;
+    }
+    if (name == kGlExtensions) {
+        std::string served;
+        for (const std::string& extension : served_extensions(host)) {
+            if (!served.empty()) served.push_back(' ');
+            served += extension;
+        }
+        if (const std::uint32_t address = answer_with_string(host, call, served)) current.strings[name] = address;
         return true;
     }
     const GLubyte* source = host.backend().glGetString(name);
@@ -957,6 +1041,17 @@ bool zbgl_manual_glGetStringi(HostGl& host, HostGl::Call& call) {
     const auto cached = current.indexed_strings.find(key);
     if (cached != current.indexed_strings.end()) {
         call.set_result(cached->second);
+        return true;
+    }
+    if (name == kGlExtensions) {
+        const std::vector<std::string>& served = served_extensions(host);
+        if (index >= served.size()) {
+            host.reject(call, kGlInvalidValue, "extension index is out of range");
+            return true;
+        }
+        if (const std::uint32_t address = answer_with_string(host, call, served[index])) {
+            current.indexed_strings[key] = address;
+        }
         return true;
     }
     const GLubyte* source = host.backend().glGetStringi(name, index);

@@ -334,6 +334,7 @@ int main() {
     backend.clear_calls();
     static const char kExtension[] = "GL_OES_mock_extension";
     backend.set_result("glGetStringi", reinterpret_cast<std::uint64_t>(kExtension));
+    backend.set_integer(0x821D, 3);  // GL_NUM_EXTENSIONS
     pointer_words = {0x1F03, 2};  // GL_EXTENSIONS
     set_words(runtime, thread, pointer_words);
     CHECK(host.handle_host_call(zb::ZB_GL_HC_glGetStringi, thread));
@@ -341,10 +342,44 @@ int main() {
     CHECK(extension != 0 && extension != reinterpret_cast<std::uintptr_t>(kExtension));
     CHECK(std::strcmp(reinterpret_cast<const char*>(runtime.memory().base() + extension),
                       kExtension) == 0);
-    CHECK(backend.calls().size() == 1);
+    // The driver is read while the extension list is built, and not again afterwards.
+    const std::size_t after_list = backend.calls().size();
+    CHECK(after_list >= 1);
     set_words(runtime, thread, pointer_words);
     CHECK(host.handle_host_call(zb::ZB_GL_HC_glGetStringi, thread));
-    CHECK(thread.regs()[0] == extension && backend.calls().size() == 1);
+    CHECK(thread.regs()[0] == extension && backend.calls().size() == after_list);
+
+    // An extension this bridge cannot serve is dropped from what the guest is told, because a
+    // guest that finds it in the list calls its entry points without checking that they exist.
+    // GL_NUM_EXTENSIONS must agree with the filtered list, or the guest reads past its end.
+    pointer_words = {0x821D, kData};  // GL_NUM_EXTENSIONS
+    set_words(runtime, thread, pointer_words);
+    CHECK(host.handle_host_call(zb::ZB_GL_HC_glGetIntegerv, thread));
+    CHECK(*reinterpret_cast<const std::int32_t*>(runtime.memory().base() + kData) == 3);
+    {
+        MockGles filtered_backend;
+        std::uint32_t filtered_allocation = kData + 0x400;
+        zb::HostGl filtered(
+            runtime, filtered_backend,
+            [&](std::size_t size) -> std::optional<std::uint32_t> {
+                const std::uint32_t result = filtered_allocation;
+                filtered_allocation += static_cast<std::uint32_t>((size + 7) & ~std::size_t{7});
+                if (filtered_allocation > kData + 0x7F0) return std::nullopt;
+                return result;
+            },
+            [] { return std::uintptr_t{0xC0FFEE}; });
+        filtered_backend.set_integer(0x821D, 2);
+        static const char kDropped[] = "GL_KHR_debug";
+        filtered_backend.set_result("glGetStringi", reinterpret_cast<std::uint64_t>(kDropped));
+        pointer_words = {0x821D, kData};
+        set_words(runtime, thread, pointer_words);
+        CHECK(filtered.handle_host_call(zb::ZB_GL_HC_glGetIntegerv, thread));
+        CHECK(*reinterpret_cast<const std::int32_t*>(runtime.memory().base() + kData) == 0);
+        pointer_words = {0x1F03, 0};
+        set_words(runtime, thread, pointer_words);
+        CHECK(filtered.handle_host_call(zb::ZB_GL_HC_glGetStringi, thread));
+        CHECK(filtered_backend.error() == zb::kGlInvalidValue);
+    }
 
     // GLES 3.0 mapped buffers are mirrored: a driver mapping is host memory outside the guest
     // space, so the guest gets a copy that is written back on unmap.
