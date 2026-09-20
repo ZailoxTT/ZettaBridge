@@ -147,6 +147,22 @@ def looper_compat_names():
     ]
 
 
+def sensor_names():
+    """Every ASensor* entry point of the NDK header, in name order.
+
+    A guest that imports one missing name does not load at all, so the list comes from the header
+    rather than from what one game happens to call: Unity stops on
+    ASensorEventQueue_disableSensor, and the next guest would stop on a different one.
+    """
+    names = set()
+    decl = re.compile(r"^[A-Za-z_][\w \*]*\b(ASensor\w*)\(")
+    for line in open(os.path.join(INCLUDE, "android", "sensor.h")):
+        m = decl.match(line)
+        if m:
+            names.add(m.group(1))
+    return sorted(names)
+
+
 LIBRARIES = [
     ("libGLESv2", gles2_names),
     ("libandroid", android_names),
@@ -164,6 +180,8 @@ LIBRARIES = [
     ("libGLESv2", gles3_names),
     # GLES extension entry points, after GLES 3.0 for the same reason.
     ("libGLESv2", gles_ext_names),
+    # Sensors, appended last (core/include/zb/sensor_hostcalls.h holds the indices by hand).
+    ("libandroid", sensor_names),
 ]
 
 

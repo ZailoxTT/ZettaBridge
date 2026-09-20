@@ -290,3 +290,259 @@ ALooper_wake:
     svc #0x5a00e3
     bx lr
 .size ALooper_wake, . - ALooper_wake
+
+.global ASensorEventQueue_disableSensor
+.type ASensorEventQueue_disableSensor, %function
+.p2align 2
+ASensorEventQueue_disableSensor:
+    svc #0x5a0158
+    bx lr
+.size ASensorEventQueue_disableSensor, . - ASensorEventQueue_disableSensor
+
+.global ASensorEventQueue_enableSensor
+.type ASensorEventQueue_enableSensor, %function
+.p2align 2
+ASensorEventQueue_enableSensor:
+    svc #0x5a0159
+    bx lr
+.size ASensorEventQueue_enableSensor, . - ASensorEventQueue_enableSensor
+
+.global ASensorEventQueue_getEvents
+.type ASensorEventQueue_getEvents, %function
+.p2align 2
+ASensorEventQueue_getEvents:
+    svc #0x5a015a
+    bx lr
+.size ASensorEventQueue_getEvents, . - ASensorEventQueue_getEvents
+
+.global ASensorEventQueue_hasEvents
+.type ASensorEventQueue_hasEvents, %function
+.p2align 2
+ASensorEventQueue_hasEvents:
+    svc #0x5a015b
+    bx lr
+.size ASensorEventQueue_hasEvents, . - ASensorEventQueue_hasEvents
+
+.global ASensorEventQueue_registerSensor
+.type ASensorEventQueue_registerSensor, %function
+.p2align 2
+ASensorEventQueue_registerSensor:
+    svc #0x5a015c
+    bx lr
+.size ASensorEventQueue_registerSensor, . - ASensorEventQueue_registerSensor
+
+.global ASensorEventQueue_requestAdditionalInfoEvents
+.type ASensorEventQueue_requestAdditionalInfoEvents, %function
+.p2align 2
+ASensorEventQueue_requestAdditionalInfoEvents:
+    svc #0x5a015d
+    bx lr
+.size ASensorEventQueue_requestAdditionalInfoEvents, . - ASensorEventQueue_requestAdditionalInfoEvents
+
+.global ASensorEventQueue_setEventRate
+.type ASensorEventQueue_setEventRate, %function
+.p2align 2
+ASensorEventQueue_setEventRate:
+    svc #0x5a015e
+    bx lr
+.size ASensorEventQueue_setEventRate, . - ASensorEventQueue_setEventRate
+
+.global ASensorManager_configureDirectReport
+.type ASensorManager_configureDirectReport, %function
+.p2align 2
+ASensorManager_configureDirectReport:
+    svc #0x5a015f
+    bx lr
+.size ASensorManager_configureDirectReport, . - ASensorManager_configureDirectReport
+
+.global ASensorManager_createEventQueue
+.type ASensorManager_createEventQueue, %function
+.p2align 2
+ASensorManager_createEventQueue:
+    svc #0x5a0160
+    bx lr
+.size ASensorManager_createEventQueue, . - ASensorManager_createEventQueue
+
+.global ASensorManager_createHardwareBufferDirectChannel
+.type ASensorManager_createHardwareBufferDirectChannel, %function
+.p2align 2
+ASensorManager_createHardwareBufferDirectChannel:
+    svc #0x5a0161
+    bx lr
+.size ASensorManager_createHardwareBufferDirectChannel, . - ASensorManager_createHardwareBufferDirectChannel
+
+.global ASensorManager_createSharedMemoryDirectChannel
+.type ASensorManager_createSharedMemoryDirectChannel, %function
+.p2align 2
+ASensorManager_createSharedMemoryDirectChannel:
+    svc #0x5a0162
+    bx lr
+.size ASensorManager_createSharedMemoryDirectChannel, . - ASensorManager_createSharedMemoryDirectChannel
+
+.global ASensorManager_destroyDirectChannel
+.type ASensorManager_destroyDirectChannel, %function
+.p2align 2
+ASensorManager_destroyDirectChannel:
+    svc #0x5a0163
+    bx lr
+.size ASensorManager_destroyDirectChannel, . - ASensorManager_destroyDirectChannel
+
+.global ASensorManager_destroyEventQueue
+.type ASensorManager_destroyEventQueue, %function
+.p2align 2
+ASensorManager_destroyEventQueue:
+    svc #0x5a0164
+    bx lr
+.size ASensorManager_destroyEventQueue, . - ASensorManager_destroyEventQueue
+
+.global ASensorManager_getDefaultSensor
+.type ASensorManager_getDefaultSensor, %function
+.p2align 2
+ASensorManager_getDefaultSensor:
+    svc #0x5a0165
+    bx lr
+.size ASensorManager_getDefaultSensor, . - ASensorManager_getDefaultSensor
+
+.global ASensorManager_getDefaultSensorEx
+.type ASensorManager_getDefaultSensorEx, %function
+.p2align 2
+ASensorManager_getDefaultSensorEx:
+    svc #0x5a0166
+    bx lr
+.size ASensorManager_getDefaultSensorEx, . - ASensorManager_getDefaultSensorEx
+
+.global ASensorManager_getDynamicSensorList
+.type ASensorManager_getDynamicSensorList, %function
+.p2align 2
+ASensorManager_getDynamicSensorList:
+    svc #0x5a0167
+    bx lr
+.size ASensorManager_getDynamicSensorList, . - ASensorManager_getDynamicSensorList
+
+.global ASensorManager_getInstance
+.type ASensorManager_getInstance, %function
+.p2align 2
+ASensorManager_getInstance:
+    svc #0x5a0168
+    bx lr
+.size ASensorManager_getInstance, . - ASensorManager_getInstance
+
+.global ASensorManager_getInstanceForPackage
+.type ASensorManager_getInstanceForPackage, %function
+.p2align 2
+ASensorManager_getInstanceForPackage:
+    svc #0x5a0169
+    bx lr
+.size ASensorManager_getInstanceForPackage, . - ASensorManager_getInstanceForPackage
+
+.global ASensorManager_getSensorList
+.type ASensorManager_getSensorList, %function
+.p2align 2
+ASensorManager_getSensorList:
+    svc #0x5a016a
+    bx lr
+.size ASensorManager_getSensorList, . - ASensorManager_getSensorList
+
+.global ASensor_getFifoMaxEventCount
+.type ASensor_getFifoMaxEventCount, %function
+.p2align 2
+ASensor_getFifoMaxEventCount:
+    svc #0x5a016b
+    bx lr
+.size ASensor_getFifoMaxEventCount, . - ASensor_getFifoMaxEventCount
+
+.global ASensor_getFifoReservedEventCount
+.type ASensor_getFifoReservedEventCount, %function
+.p2align 2
+ASensor_getFifoReservedEventCount:
+    svc #0x5a016c
+    bx lr
+.size ASensor_getFifoReservedEventCount, . - ASensor_getFifoReservedEventCount
+
+.global ASensor_getHandle
+.type ASensor_getHandle, %function
+.p2align 2
+ASensor_getHandle:
+    svc #0x5a016d
+    bx lr
+.size ASensor_getHandle, . - ASensor_getHandle
+
+.global ASensor_getHighestDirectReportRateLevel
+.type ASensor_getHighestDirectReportRateLevel, %function
+.p2align 2
+ASensor_getHighestDirectReportRateLevel:
+    svc #0x5a016e
+    bx lr
+.size ASensor_getHighestDirectReportRateLevel, . - ASensor_getHighestDirectReportRateLevel
+
+.global ASensor_getMinDelay
+.type ASensor_getMinDelay, %function
+.p2align 2
+ASensor_getMinDelay:
+    svc #0x5a016f
+    bx lr
+.size ASensor_getMinDelay, . - ASensor_getMinDelay
+
+.global ASensor_getName
+.type ASensor_getName, %function
+.p2align 2
+ASensor_getName:
+    svc #0x5a0170
+    bx lr
+.size ASensor_getName, . - ASensor_getName
+
+.global ASensor_getReportingMode
+.type ASensor_getReportingMode, %function
+.p2align 2
+ASensor_getReportingMode:
+    svc #0x5a0171
+    bx lr
+.size ASensor_getReportingMode, . - ASensor_getReportingMode
+
+.global ASensor_getResolution
+.type ASensor_getResolution, %function
+.p2align 2
+ASensor_getResolution:
+    svc #0x5a0172
+    bx lr
+.size ASensor_getResolution, . - ASensor_getResolution
+
+.global ASensor_getStringType
+.type ASensor_getStringType, %function
+.p2align 2
+ASensor_getStringType:
+    svc #0x5a0173
+    bx lr
+.size ASensor_getStringType, . - ASensor_getStringType
+
+.global ASensor_getType
+.type ASensor_getType, %function
+.p2align 2
+ASensor_getType:
+    svc #0x5a0174
+    bx lr
+.size ASensor_getType, . - ASensor_getType
+
+.global ASensor_getVendor
+.type ASensor_getVendor, %function
+.p2align 2
+ASensor_getVendor:
+    svc #0x5a0175
+    bx lr
+.size ASensor_getVendor, . - ASensor_getVendor
+
+.global ASensor_isDirectChannelTypeSupported
+.type ASensor_isDirectChannelTypeSupported, %function
+.p2align 2
+ASensor_isDirectChannelTypeSupported:
+    svc #0x5a0176
+    bx lr
+.size ASensor_isDirectChannelTypeSupported, . - ASensor_isDirectChannelTypeSupported
+
+.global ASensor_isWakeUpSensor
+.type ASensor_isWakeUpSensor, %function
+.p2align 2
+ASensor_isWakeUpSensor:
+    svc #0x5a0177
+    bx lr
+.size ASensor_isWakeUpSensor, . - ASensor_isWakeUpSensor

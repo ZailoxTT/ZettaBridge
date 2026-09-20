@@ -19,6 +19,7 @@ set(ZB_HOST_TESTS
     platform_compat_test
     proxy_runtime_test
     runtime_report_test
+    sensors_test
     t1_blob_test
 )
 
