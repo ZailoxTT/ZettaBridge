@@ -45,6 +45,10 @@ private:
     // backend call. Keyed by window handle.
     mutable std::mutex surfaces_mutex_;
     std::unordered_map<std::uint32_t, std::uint64_t> surfaces_;
+    // How many references the guest holds on each window handle: one from fromSurface, one more
+    // per acquire. The handle dies with the last release, not the first: a guest that acquires a
+    // window and releases one of its references still owns it, and EGL must keep accepting it.
+    std::unordered_map<std::uint32_t, std::uint32_t> references_;
 };
 
 }  // namespace zb

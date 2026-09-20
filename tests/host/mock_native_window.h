@@ -6,26 +6,32 @@
 #include "zb/native_window_backend.h"
 
 // In-memory NativeWindowBackend for host tests: fromSurface hands out fixed-geometry fake
-// windows, one per distinct host surface value.
+// windows, one per distinct host surface value. References are counted as a real ANativeWindow
+// counts them, so a window outlives a release that is not its last.
 class MockNativeWindow final : public zb::NativeWindowBackend {
 public:
     void* from_surface(void* env, void* surface) override {
         last_env = env;
         last_surface = surface;
         auto* window = new int(static_cast<int>(++next_window_));
-        windows_[window] = true;
+        windows_[window] = 1;
         return window;
     }
 
     void acquire(void* window) override {
-        if (windows_.count(window)) ++acquired_;
+        const auto entry = windows_.find(window);
+        if (entry == windows_.end()) return;
+        ++entry->second;
+        ++acquired_;
     }
 
     void release(void* window) override {
-        if (windows_.erase(window) != 0) {
-            ++released_;
-            delete static_cast<int*>(window);
-        }
+        const auto entry = windows_.find(window);
+        if (entry == windows_.end()) return;
+        ++released_;
+        if (--entry->second != 0) return;
+        windows_.erase(entry);
+        delete static_cast<int*>(window);
     }
 
     std::int32_t query(void* window, Query which) override {
@@ -62,7 +68,7 @@ public:
     std::int32_t last_geometry_format = 0;
 
 private:
-    std::unordered_map<void*, bool> windows_;
+    std::unordered_map<void*, int> windows_;
     std::uint64_t next_window_ = 0;
     int released_ = 0;
     int acquired_ = 0;

@@ -45,23 +45,40 @@ bool HostNativeWindow::handle_host_call(std::uint32_t index, GuestThread& thread
             handle = windows_.add(from_pointer(window));
             std::lock_guard<std::mutex> lock(surfaces_mutex_);
             surfaces_[handle] = surface;
+            references_[handle] = 1;
         }
         regs[0] = handle;
         return true;
     }
     case ZB_WINDOW_HC_ANativeWindow_acquire: {
         const void* window = require_window(regs[0]);
-        if (window != nullptr) backend_.acquire(const_cast<void*>(window));
+        if (window != nullptr) {
+            backend_.acquire(const_cast<void*>(window));
+            std::lock_guard<std::mutex> lock(surfaces_mutex_);
+            ++references_[regs[0]];
+        }
         regs[0] = 0;
         return true;
     }
     case ZB_WINDOW_HC_ANativeWindow_release: {
-        const std::optional<std::uint64_t> value = windows_.remove(regs[0]);
-        if (value && *value != 0) {
-            backend_.release(as_pointer(*value));
+        bool last = false;
+        {
             std::lock_guard<std::mutex> lock(surfaces_mutex_);
-            surfaces_.erase(regs[0]);
+            const auto reference = references_.find(regs[0]);
+            if (reference == references_.end()) {
+                regs[0] = 0;  // not a live window handle
+                return true;
+            }
+            last = --reference->second == 0;
+            if (last) {
+                references_.erase(reference);
+                surfaces_.erase(regs[0]);
+            }
         }
+        // The backend is told about every release, as the guest issued it; only the handle
+        // itself survives until the last one.
+        const std::optional<std::uint64_t> value = last ? windows_.remove(regs[0]) : windows_.get(regs[0]);
+        if (value && *value != 0) backend_.release(as_pointer(*value));
         regs[0] = 0;
         return true;
     }

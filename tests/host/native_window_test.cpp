@@ -77,15 +77,29 @@ int main() {
     CHECK(surface_back != 0);
     CHECK(host_jni->resolve_ref(surface_back, "check") == surface_object);
 
-    // release drops the handle; every further use is rejected and never reaches the backend.
+    // The guest holds two references here (fromSurface and acquire), so this release is not the
+    // last one and the window stays usable. EGL rejected a window surface on a handle dropped
+    // this early, which is a black screen with no error anywhere.
     call_window(*windows, thread, zb::ZB_WINDOW_HC_ANativeWindow_release, {window});
     CHECK(backend->released() == 1);
+    CHECK(call_window(*windows, thread, zb::ZB_WINDOW_HC_ANativeWindow_getWidth, {window}) == 1080);
+    CHECK(windows->value_for(window) != nullptr);
+
+    // The last release drops the handle; every further use is rejected and never reaches the
+    // backend.
+    call_window(*windows, thread, zb::ZB_WINDOW_HC_ANativeWindow_release, {window});
+    CHECK(backend->released() == 2);
+    CHECK(windows->value_for(window) == nullptr);
 
     CHECK(call_window(*windows, thread, zb::ZB_WINDOW_HC_ANativeWindow_getWidth, {window}) ==
           static_cast<std::uint32_t>(-1));
     CHECK(call_window(*windows, thread, zb::ZB_WINDOW_HC_ANativeWindow_getHeight, {window}) ==
           static_cast<std::uint32_t>(-1));
     CHECK(call_window(*windows, thread, zb::ZB_WINDOW_HC_ANativeWindow_toSurface, {0, window}) == 0);
+
+    // A release of a handle that is already gone changes nothing.
+    call_window(*windows, thread, zb::ZB_WINDOW_HC_ANativeWindow_release, {window});
+    CHECK(backend->released() == 2);
 
     // An unknown handle also never reaches the backend.
     CHECK(call_window(*windows, thread, zb::ZB_WINDOW_HC_ANativeWindow_getFormat, {0xdeadbeef}) ==
