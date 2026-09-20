@@ -488,6 +488,10 @@ GuestMemory& LibraryRuntime::memory() {
     return impl_->process.memory();
 }
 
+std::vector<std::string> LibraryRuntime::mapped_file_paths() const {
+    return impl_->process.mapped_file_paths();
+}
+
 void LibraryRuntime::add_path_alias(std::string guest_prefix, std::string host_prefix) {
     impl_->process.add_path_alias(std::move(guest_prefix), std::move(host_prefix));
 }

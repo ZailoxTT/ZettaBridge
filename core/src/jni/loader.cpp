@@ -10,6 +10,7 @@
 #include "zb/elf_symbols.h"
 #include "zb/host_jni.h"
 #include "zb/jni_mangle.h"
+#include "zb/library_protocol.h"
 #include "zb/log.h"
 #include "zb/runtime_report.h"
 
@@ -78,22 +79,11 @@ void JniLoader::log_unmatched_once(const std::string& symbol) {
     }
 }
 
-JniLoadReport JniLoader::load(JniBackend::Env env, const std::string& path,
-                              std::uint32_t guest_flags) {
-    JniLoadReport report;
-    const ElfSymbolReport symbols = scan_elf32_jni_exports(path);
-    if (symbols.status != ElfSymbolStatus::Ok) {
-        report.error = "cannot scan JNI exports: " + symbols.message;
-        return report;
-    }
-
-    report.guest_handle = host_jni_.load_library_on_current(env, path, guest_flags, report.error);
-    if (report.guest_handle == 0) {
-        report.error = "guest dlopen failed: " + report.error;
-        return report;
-    }
-
-    bool has_onload = false;
+// Binds the Java_* exports of one library that is already loaded in the guest. JNI_OnLoad is
+// not called here: a library the guest opened by itself was never handed to ART, and running its
+// JNI_OnLoad a second time is not ours to decide.
+bool JniLoader::bind_exports(JniBackend::Env env, const ElfSymbolReport& symbols,
+                             std::uint32_t guest_handle, JniLoadReport& report, bool& has_onload) {
     for (const std::string& symbol : symbols.exports) {
         if (symbol == "JNI_OnLoad") {
             has_onload = true;
@@ -102,7 +92,7 @@ JniLoadReport JniLoader::load(JniBackend::Env env, const std::string& path,
         const std::optional<JniExport> decoded = decode_jni_export(symbol);
         if (!decoded) {
             report.error = "invalid JNI export name: " + symbol;
-            return report;
+            return false;
         }
 
         JniBackend::Ref cls = 0;
@@ -126,7 +116,7 @@ JniLoadReport JniLoader::load(JniBackend::Env env, const std::string& path,
         }
         if (lookup != NativeLookupStatus::Found || cls == 0) {
             report.error = "failed to inspect declared natives for " + decoded->class_name + "." + decoded->method;
-            return report;
+            return false;
         }
         LocalClass local_class(backend_, env, cls);
         std::erase_if(methods, [&](const DeclaredNativeMethod& method) {
@@ -144,21 +134,86 @@ JniLoadReport JniLoader::load(JniBackend::Env env, const std::string& path,
 
         std::string symbol_error;
         const std::uint32_t function =
-            host_jni_.find_symbol_on_current(env, report.guest_handle, symbol, symbol_error);
+            host_jni_.find_symbol_on_current(env, guest_handle, symbol, symbol_error);
         if (function == 0) {
             report.error = "guest dlsym failed for " + symbol + ": " + symbol_error;
-            return report;
+            return false;
         }
         for (const DeclaredNativeMethod& method : methods) {
             if (host_jni_.register_native(env, cls, decoded->method.c_str(), method.signature.c_str(), function,
                                           method.is_static, decoded->class_name.c_str()) != 0) {
                 report.error = "RegisterNatives failed for " + decoded->class_name + "." + decoded->method +
                                method.signature;
-                return report;
+                return false;
             }
             ++report.bound_methods;
         }
     }
+
+    return true;
+}
+
+// Binds the Java_* exports of every library the guest mapped by itself. A JNI shim whose
+// JNI_OnLoad dlopens the real library is a common Unity plugin shape: ART resolves a native
+// method against the library Java loaded, which is the shim, and the real library's exports were
+// reachable from nowhere. Nothing here can fail the load ART asked for.
+void JniLoader::bind_guest_loaded_libraries(JniBackend::Env env, JniLoadReport& report) {
+    for (const std::string& path : host_jni_.mapped_file_paths()) {
+        if (path.size() < 4 || path.compare(path.size() - 3, 3, ".so") != 0) continue;
+        {
+            std::lock_guard<std::mutex> lock(missing_mutex_);
+            if (!swept_libraries_.insert(path).second) continue;
+        }
+        const ElfSymbolReport symbols = scan_elf32_jni_exports(path);
+        if (symbols.status != ElfSymbolStatus::Ok) continue;
+        const bool has_natives = std::any_of(symbols.exports.begin(), symbols.exports.end(),
+                                             [](const std::string& name) { return name != "JNI_OnLoad"; });
+        if (!has_natives) continue;
+
+        std::string error;
+        // RTLD_NOLOAD: this must find a library the guest already has, never load a new one.
+        const std::uint32_t handle = host_jni_.load_library_on_current(
+            env, path, ZB_GUEST_RTLD_NOLOAD | ZB_GUEST_RTLD_NOW, error);
+        if (handle == 0) continue;
+
+        JniLoadReport swept;
+        swept.guest_handle = handle;
+        bool has_onload = false;
+        if (!bind_exports(env, symbols, handle, swept, has_onload)) {
+            log("cannot bind the exports of %s, which the guest loaded itself: %s", path.c_str(),
+                swept.error.c_str());
+            continue;
+        }
+        report.bound_methods += swept.bound_methods;
+        report.skipped_classes += swept.skipped_classes;
+        report.skipped_exports += swept.skipped_exports;
+        if (swept.bound_methods != 0) {
+            log("bound %zu natives of %s, which the guest loaded itself", swept.bound_methods, path.c_str());
+        }
+    }
+}
+
+JniLoadReport JniLoader::load(JniBackend::Env env, const std::string& path,
+                              std::uint32_t guest_flags) {
+    JniLoadReport report;
+    const ElfSymbolReport symbols = scan_elf32_jni_exports(path);
+    if (symbols.status != ElfSymbolStatus::Ok) {
+        report.error = "cannot scan JNI exports: " + symbols.message;
+        return report;
+    }
+
+    report.guest_handle = host_jni_.load_library_on_current(env, path, guest_flags, report.error);
+    if (report.guest_handle == 0) {
+        report.error = "guest dlopen failed: " + report.error;
+        return report;
+    }
+
+    {
+        std::lock_guard<std::mutex> lock(missing_mutex_);
+        swept_libraries_.insert(path);  // never bind the library ART asked for twice
+    }
+    bool has_onload = false;
+    if (!bind_exports(env, symbols, report.guest_handle, report, has_onload)) return report;
 
     if (has_onload) {
         const std::string library = base_name(path);
@@ -198,6 +253,7 @@ JniLoadReport JniLoader::load(JniBackend::Env env, const std::string& path,
     }
 
     report.ok = true;
+    bind_guest_loaded_libraries(env, report);
     return report;
 }
 

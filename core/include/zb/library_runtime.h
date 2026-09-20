@@ -61,6 +61,8 @@ public:
     // Redirects guest file operations under one directory to another (Process::add_path_alias):
     // the launcher's arm64 proxy directory stands for the plugin's arm32 libraries.
     void add_path_alias(std::string guest_prefix, std::string host_prefix);
+    // Paths of the files the guest has mapped (Process::mapped_file_paths).
+    std::vector<std::string> mapped_file_paths() const;
     // Valid after a successful start().
     const zb_service_api& service_api() const;
     // Real guest pthreads (service, carriers, guest-created threads); borrowers are not counted.

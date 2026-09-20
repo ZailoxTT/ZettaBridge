@@ -6,6 +6,7 @@
 #include <string>
 #include <unordered_set>
 
+#include "zb/elf_symbols.h"
 #include "zb/jni_backend.h"
 
 namespace zb {
@@ -34,6 +35,9 @@ public:
     JniLoadReport load(JniBackend::Env env, const std::string& path, std::uint32_t guest_flags);
 
 private:
+    bool bind_exports(JniBackend::Env env, const ElfSymbolReport& symbols, std::uint32_t guest_handle,
+                      JniLoadReport& report, bool& has_onload);
+    void bind_guest_loaded_libraries(JniBackend::Env env, JniLoadReport& report);
     void log_missing_class_once(const std::string& name);
     void log_unresolvable_once(const std::string& symbol, const std::string& name);
     void log_unmatched_once(const std::string& symbol);
@@ -43,6 +47,7 @@ private:
     std::mutex missing_mutex_;
     std::unordered_set<std::string> missing_classes_;
     std::unordered_set<std::string> unresolvable_exports_;
+    std::unordered_set<std::string> swept_libraries_;
 };
 
 }  // namespace zb

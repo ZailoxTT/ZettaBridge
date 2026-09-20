@@ -134,6 +134,11 @@ public:
     // own" library finds the proxy directory, which holds no arm32 anything: IL2CPP reports that
     // it cannot load. Aliases win over the sysroot mappings, and the longest prefix wins.
     void add_path_alias(std::string guest_prefix, std::string host_prefix);
+
+    // Distinct paths of the files the guest currently has mapped, newest first. A library the
+    // guest loaded by itself (a JNI shim whose JNI_OnLoad dlopens the real library, which Unity
+    // plugins do) appears here and nowhere else.
+    std::vector<std::string> mapped_file_paths() const;
     // Host path of the guest executable, as reported by /proc/self/exe.
     const std::string& exe_path() const { return exe_path_; }
     // Opens a synthesized /proc file (/proc/self/maps, /proc/self/stat, /proc/cpuinfo) that

@@ -47,7 +47,8 @@ fs::path make_files(const fs::path& base, char** argv, bool valid_zbjni) {
         std::ofstream(files / "zb/guest/lib/libzbjni.so") << "not an ELF file";
     }
     const fs::path root = files / "plugins" / kPackage;
-    for (const char* name : {"libzbloadprobe.so", "libzbloadbad.so", "libzbloadunknown.so"}) {
+    for (const char* name : {"libzbloadprobe.so", "libzbloadbad.so", "libzbloadunknown.so",
+                             "libzbloadshim.so", "libzbloadhidden.so"}) {
         fs::create_directories(root / "lib");
         fs::copy_file(guest_lib / name, root / "lib" / name);
         fs::create_directories(root / "proxy");
@@ -75,6 +76,9 @@ int main(int argc, char** argv) {
     vm->add_native("zb/Load", "shortExport", "(I)I", true);
     vm->add_native("zb/Load", "over", "(I)I", true);
     vm->add_native("zb/Load", "over", "(Ljava/lang/String;)I", false);
+    // The natives of the library the shim opens by itself: Java never loads that library.
+    vm->define_class("zb/Hidden");
+    vm->add_native("zb/Hidden", "value", "()I", true);
     // Process-lifetime graph: never destroyed, the test ends with _Exit.
     auto* engine = new zb::GuestJniEngine(*vm);
     auto* runtime = new zb::ProxyRuntime(*engine);
@@ -107,6 +111,19 @@ int main(int argc, char** argv) {
         MockJvm::NativeFrame call(*vm, env);
         CHECK(no_args(env, call.local(vm->class_object("zb/Load"))) == 17);
     }
+    // A shim whose JNI_OnLoad opens the real library: ART resolves natives against the library
+    // Java loaded, which is the shim, so the natives of the opened library are reachable from
+    // nowhere unless the loader sweeps what the guest mapped by itself.
+    const auto shim = runtime->on_proxy_loaded(env, proxy("libzbloadshim.so"));
+    if (!shim.ok) std::fprintf(stderr, "shim load error: %s\n", shim.error.c_str());
+    CHECK(shim.ok && shim.jni_version == 0x00010006);
+    const auto hidden = reinterpret_cast<NoArgsFn>(vm->native_function("zb/Hidden", "value", "()I"));
+    CHECK(hidden != nullptr);
+    {
+        MockJvm::NativeFrame call(*vm, env);
+        CHECK(hidden(env, call.local(vm->class_object("zb/Hidden"))) == 41);
+    }
+
     // Repeated load is memoized: nothing is registered again (a new registration takes a new thunk).
     const auto again = runtime->on_proxy_loaded(env, proxy("libzbloadprobe.so"));
     CHECK(again.ok && again.jni_version == 0x00010006);

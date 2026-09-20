@@ -94,6 +94,9 @@ public:
     // Guest loader operations bound to the calling host thread. All calls use its cached carrier,
     // or the currently running guest thread for a nested Java -> load transition. A failed loader
     // lookup reads dlerror on that same guest thread.
+    // Host paths of the files the guest has mapped (LibraryRuntime::mapped_file_paths).
+    std::vector<std::string> mapped_file_paths() const;
+
     std::uint32_t load_library_on_current(JniBackend::Env env, const std::string& path,
                                           std::uint32_t guest_flags, std::string& error);
     std::uint32_t find_symbol_on_current(JniBackend::Env env, std::uint32_t handle,

@@ -196,6 +196,15 @@ void Process::record_file_mapping(std::uint32_t start, std::uint32_t length, std
     file_mappings_.push_back({start, length, offset, std::move(path), offset_is_vaddr});
 }
 
+std::vector<std::string> Process::mapped_file_paths() const {
+    std::vector<std::string> paths;
+    for (auto it = file_mappings_.rbegin(); it != file_mappings_.rend(); ++it) {
+        if (it->path.empty()) continue;
+        if (std::find(paths.begin(), paths.end(), it->path) == paths.end()) paths.push_back(it->path);
+    }
+    return paths;
+}
+
 void Process::forget_mappings(std::uint32_t start, std::uint64_t length) {
     const std::uint64_t end = static_cast<std::uint64_t>(start) + length;
     std::erase_if(file_mappings_, [&](const FileMapping& m) {

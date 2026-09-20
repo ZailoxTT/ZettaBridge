@@ -8,6 +8,7 @@
 #   guest/testlib/zbjniprobe.c  -> build/guest/lib/libzbjniprobe.so
 #   guest/testlib/zbt7probe.c   -> build/guest/lib/libzbt7probe.so (real ART T7)
 #   guest/testlib/zbloadprobe.c -> build/guest/lib/libzbload*.so
+#   guest/testlib/zbloadshim.c  -> build/guest/lib/libzbloadshim.so (opens libzbloadhidden.so)
 #   guest/zbhost/zbhost.c       -> build/guest/zbhost
 #   guest/zbjni/zbjni.c         -> build/guest/lib/libzbjni.so (guest JNIEnv/JavaVM)
 #   guest/stubs/gen/*.S         -> build/guest/lib/<lib>.so host-call stub libraries
@@ -60,6 +61,11 @@ cp "$TOOLCHAIN/sysroot/usr/lib/arm-linux-androideabi/libc++_shared.so" "$OUT/lib
     -Wl,-soname,libzbloadnoonload.so -o "$OUT/lib/libzbloadnoonload.so" "$ROOT/guest/testlib/zbloadprobe.c"
 "$CC" -shared -fPIC -O2 -Wall -Wextra -Wno-unused-parameter -DZB_LOAD_UNKNOWN_EXPORT \
     -Wl,-soname,libzbloadunknown.so -o "$OUT/lib/libzbloadunknown.so" "$ROOT/guest/testlib/zbloadprobe.c"
+# A shim whose JNI_OnLoad opens the library that carries the natives, as Unity plugins do.
+"$CC" -shared -fPIC -O2 -Wall -Wextra -Wno-unused-parameter -Wl,-soname,libzbloadhidden.so \
+    -o "$OUT/lib/libzbloadhidden.so" "$ROOT/guest/testlib/zbloadhidden.c"
+"$CC" -shared -fPIC -O2 -Wall -Wextra -Wno-unused-parameter -Wl,-soname,libzbloadshim.so \
+    -o "$OUT/lib/libzbloadshim.so" "$ROOT/guest/testlib/zbloadshim.c"
 "$CC" -shared -fPIC -O2 -Wall -Wextra -Wl,-soname,libzbloadskip.so \
     -o "$OUT/lib/libzbloadskip.so" "$ROOT/guest/testlib/zbloadskip.c"
 for src in "$ROOT"/guest/tests/*_dynamic.cpp; do

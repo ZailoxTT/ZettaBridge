@@ -306,6 +306,10 @@ bool HostJni::Impl::ensure_guest_env(JniThread& state) {
     return true;
 }
 
+std::vector<std::string> HostJni::mapped_file_paths() const {
+    return impl_->runtime.mapped_file_paths();
+}
+
 HostJni::HostJni(LibraryRuntime& runtime, JniBackend& backend, std::size_t slot_capacity)
     : impl_(std::make_unique<Impl>(runtime, backend, slot_capacity)) {
     impl_->owner = this;
