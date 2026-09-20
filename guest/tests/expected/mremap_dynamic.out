@@ -1,0 +1,6 @@
+grow kept contents: 1
+grown tail writable: 1
+shrink kept address: 1
+shrink kept contents: 1
+blocked grow refused: 1
+read-only move kept contents: 1

@@ -310,6 +310,86 @@ std::int32_t sys_mmap2(Ctx& c) {
     return static_cast<std::int32_t>(at);
 }
 
+// Guest protection of a mapped page, from its flags.
+int prot_of_flags(std::uint8_t flags) {
+    int prot = 0;
+    if (flags & kPageRead) prot |= PROT_READ;
+    if (flags & kPageWrite) prot |= PROT_WRITE;
+    if (flags & kPageExec) prot |= PROT_EXEC;
+    return prot;
+}
+
+// Moves or resizes a guest mapping. The host cannot do it for us: the guest range must stay
+// inside the guest reservation, so a move is a fresh mapping plus a copy. That copies the
+// contents of a file mapping into anonymous memory, which is right for a private mapping and
+// wrong for a shared one; a shared file mapping is refused rather than silently detached.
+std::int32_t sys_mremap(Ctx& c) {
+    const std::uint32_t old_addr = c.a[0];
+    const std::uint64_t old_size = page_round_up(c.a[1]);
+    const std::uint64_t new_size = page_round_up(c.a[2]);
+    const int flags = static_cast<int>(c.a[3]);
+    const std::uint32_t fixed_addr = c.a[4];
+
+    if ((old_addr & kPageMask) != 0 || new_size == 0) return -EINVAL;
+    if (flags & ~(MREMAP_MAYMOVE | MREMAP_FIXED)) return -EINVAL;
+    if ((flags & MREMAP_FIXED) && !(flags & MREMAP_MAYMOVE)) return -EINVAL;
+    // Size 0 means "keep the old mapping and make another reference to it", which needs a shared
+    // mapping; the guest allocators that use mremap never ask for it.
+    if (old_size == 0) return -EINVAL;
+    if (!c.mem.accessible(old_addr, old_size, kPageMapped)) return -EFAULT;
+    const int prot = prot_of_flags(c.mem.page_flags(old_addr));
+
+    const bool fixed = (flags & MREMAP_FIXED) != 0;
+    if (!fixed && new_size <= old_size) {
+        if (new_size < old_size) {
+            const std::uint32_t tail = old_addr + static_cast<std::uint32_t>(new_size);
+            const std::uint64_t cut = old_size - new_size;
+            if (!c.mem.unmap(tail, cut)) return -EINVAL;
+            c.proc.forget_mappings(tail, cut);
+            c.proc.invalidate(tail, static_cast<std::uint32_t>(cut));
+        }
+        return static_cast<std::int32_t>(old_addr);
+    }
+    if (!fixed && old_addr + new_size <= kGuestSpaceSize &&
+        c.mem.range_free(old_addr + static_cast<std::uint32_t>(old_size), new_size - old_size) &&
+        c.mem.map_anon(old_addr + static_cast<std::uint32_t>(old_size), new_size - old_size, prot)) {
+        return static_cast<std::int32_t>(old_addr);
+    }
+    if (!(flags & MREMAP_MAYMOVE)) return -ENOMEM;
+
+    std::uint32_t at = 0;
+    if (fixed) {
+        if ((fixed_addr & kPageMask) != 0) return -EINVAL;
+        if (static_cast<std::uint64_t>(fixed_addr) + new_size > kGuestSpaceSize) return -ENOMEM;
+        // The kernel would unmap whatever sits there; refusing is safer than dropping a mapping
+        // the guest still believes in, and no guest allocator relies on the overwrite.
+        if (!c.mem.range_free(fixed_addr, new_size)) return -ENOMEM;
+        at = fixed_addr;
+    } else {
+        at = c.mem.find_free(new_size, c.proc.mmap_limit);
+        if (at == 0) return -ENOMEM;
+    }
+    // Mapped writable for the copy, then given the protection the old range had.
+    if (!c.mem.map_anon(at, new_size, PROT_READ | PROT_WRITE)) return -ENOMEM;
+    const std::uint64_t copied = std::min(old_size, new_size);
+    const std::uint8_t* from = c.mem.host_ptr(old_addr, copied, kPageMapped);
+    std::uint8_t* to = c.mem.host_ptr(at, copied, kPageMapped);
+    if (from == nullptr || to == nullptr) {
+        c.mem.unmap(at, new_size);
+        return -EFAULT;
+    }
+    std::memcpy(to, from, copied);
+    if (prot != (PROT_READ | PROT_WRITE) && !c.mem.protect(at, new_size, prot)) {
+        c.mem.unmap(at, new_size);
+        return -EACCES;
+    }
+    if (!c.mem.unmap(old_addr, old_size)) return -EINVAL;
+    c.proc.forget_mappings(old_addr, old_size);
+    c.proc.invalidate(old_addr, static_cast<std::uint32_t>(old_size));
+    c.proc.invalidate(at, static_cast<std::uint32_t>(new_size));
+    return static_cast<std::int32_t>(at);
+}
+
 std::int32_t sys_munmap(Ctx& c) {
     const std::uint32_t addr = c.a[0];
     if ((addr & kPageMask) || c.a[1] == 0) return -EINVAL;
@@ -1235,7 +1315,7 @@ bool handle_syscall(Process& proc, GuestThread& thread) {
         res = sys_madvise(c);
         break;
     }
-    case NR_mremap: res = -ENOMEM; break;
+    case NR_mremap: res = sys_mremap(c); break;
 
     case NR_ARM_set_tls:
         thread.set_tls(c.a[0]);
