@@ -16,6 +16,7 @@
 #include "zb/host_egl.h"
 #include "zb/host_gl.h"
 #include "zb/host_looper.h"
+#include "zb/host_input.h"
 #include "zb/host_sensors.h"
 #include "zb/host_native_window.h"
 #include "zb/host_platform_compat.h"
@@ -162,7 +163,8 @@ public:
                             HostGl::EglContextProbe egl_context_probe = {},
                             AssetBackend* asset_backend = nullptr, EglBackend* egl_backend = nullptr,
                             NativeWindowBackend* window_backend = nullptr,
-                            AndroidLooperBackend* looper_backend = nullptr);
+                            AndroidLooperBackend* looper_backend = nullptr,
+                            InputBackend* input_backend = nullptr);
     ~GuestJniEngine() override;
     GuestJniEngine(const GuestJniEngine&) = delete;
     GuestJniEngine& operator=(const GuestJniEngine&) = delete;
@@ -185,6 +187,7 @@ public:
     HostNativeWindow* host_native_window() { return host_windows_; }
     HostLooper* host_looper() { return host_looper_; }
     HostSensors* host_sensors() { return host_sensors_; }
+    HostInput* host_input() { return host_input_; }
     HostPlatformCompat* host_platform_compat() { return host_compat_; }
 
 protected:
@@ -203,6 +206,7 @@ private:
     HostNativeWindow* host_windows_ = nullptr;
     HostLooper* host_looper_ = nullptr;
     HostSensors* host_sensors_ = nullptr;
+    HostInput* host_input_ = nullptr;
     HostPlatformCompat* host_compat_ = nullptr;
     JniLoader* loader_;
 };

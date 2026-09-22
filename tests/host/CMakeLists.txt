@@ -9,6 +9,7 @@ set(ZB_HOST_TESTS
     gles_client_arrays_test
     gles_marshal_test
     gles_pointer_test
+    input_queue_test
     jni_abi_test
     jni_descriptor_test
     jni_handles_test
@@ -35,6 +36,7 @@ find_package(Python3 REQUIRED COMPONENTS Interpreter)
 add_test(NAME gen_jni_check COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/gen_jni.py --check)
 add_test(NAME gen_gles_check COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/gen_gles.py --check)
 add_test(NAME gen_egl_check COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/gen_egl.py --check)
+add_test(NAME gen_input_check COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/gen_input.py --check)
 
 target_sources(egl_marshal_test PRIVATE mock_egl.cpp)
 target_sources(gles_marshal_test PRIVATE mock_gles.cpp)

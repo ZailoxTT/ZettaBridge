@@ -163,6 +163,21 @@ def sensor_names():
     return sorted(names)
 
 
+def input_names():
+    """Every AInputQueue/AInputEvent/AKeyEvent/AMotionEvent entry point of the NDK header.
+
+    From the header, not from what one game imports: a guest library with one unresolved name
+    does not load at all, and the NativeActivity guests differ in which accessors they use.
+    """
+    names = set()
+    text = open(os.path.join(INCLUDE, "android", "input.h")).read()
+    for match in re.finditer(
+            r"^[A-Za-z_][A-Za-z0-9_ \*]*?\b((?:AInputQueue|AInputEvent|AKeyEvent|AMotionEvent)\w*)\s*\(",
+            text, re.M):
+        names.add(match.group(1))
+    return sorted(names)
+
+
 LIBRARIES = [
     ("libGLESv2", gles2_names),
     ("libandroid", android_names),
@@ -182,6 +197,9 @@ LIBRARIES = [
     ("libGLESv2", gles_ext_names),
     # Sensors, appended last (core/include/zb/sensor_hostcalls.h holds the indices by hand).
     ("libandroid", sensor_names),
+    # Input: NativeActivity guests (phase 7b). Indices in core/include/zb/input_hostcalls.h,
+    # which tools/gen_input.py generates from this order.
+    ("libandroid", input_names),
 ]
 
 

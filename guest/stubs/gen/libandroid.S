@@ -546,3 +546,515 @@ ASensor_isWakeUpSensor:
     svc #0x5a0177
     bx lr
 .size ASensor_isWakeUpSensor, . - ASensor_isWakeUpSensor
+
+.global AInputEvent_getDeviceId
+.type AInputEvent_getDeviceId, %function
+.p2align 2
+AInputEvent_getDeviceId:
+    svc #0x5a0178
+    bx lr
+.size AInputEvent_getDeviceId, . - AInputEvent_getDeviceId
+
+.global AInputEvent_getSource
+.type AInputEvent_getSource, %function
+.p2align 2
+AInputEvent_getSource:
+    svc #0x5a0179
+    bx lr
+.size AInputEvent_getSource, . - AInputEvent_getSource
+
+.global AInputEvent_getType
+.type AInputEvent_getType, %function
+.p2align 2
+AInputEvent_getType:
+    svc #0x5a017a
+    bx lr
+.size AInputEvent_getType, . - AInputEvent_getType
+
+.global AInputEvent_release
+.type AInputEvent_release, %function
+.p2align 2
+AInputEvent_release:
+    svc #0x5a017b
+    bx lr
+.size AInputEvent_release, . - AInputEvent_release
+
+.global AInputEvent_toJava
+.type AInputEvent_toJava, %function
+.p2align 2
+AInputEvent_toJava:
+    svc #0x5a017c
+    bx lr
+.size AInputEvent_toJava, . - AInputEvent_toJava
+
+.global AInputQueue_attachLooper
+.type AInputQueue_attachLooper, %function
+.p2align 2
+AInputQueue_attachLooper:
+    svc #0x5a017d
+    bx lr
+.size AInputQueue_attachLooper, . - AInputQueue_attachLooper
+
+.global AInputQueue_detachLooper
+.type AInputQueue_detachLooper, %function
+.p2align 2
+AInputQueue_detachLooper:
+    svc #0x5a017e
+    bx lr
+.size AInputQueue_detachLooper, . - AInputQueue_detachLooper
+
+.global AInputQueue_finishEvent
+.type AInputQueue_finishEvent, %function
+.p2align 2
+AInputQueue_finishEvent:
+    svc #0x5a017f
+    bx lr
+.size AInputQueue_finishEvent, . - AInputQueue_finishEvent
+
+.global AInputQueue_fromJava
+.type AInputQueue_fromJava, %function
+.p2align 2
+AInputQueue_fromJava:
+    svc #0x5a0180
+    bx lr
+.size AInputQueue_fromJava, . - AInputQueue_fromJava
+
+.global AInputQueue_getEvent
+.type AInputQueue_getEvent, %function
+.p2align 2
+AInputQueue_getEvent:
+    svc #0x5a0181
+    bx lr
+.size AInputQueue_getEvent, . - AInputQueue_getEvent
+
+.global AInputQueue_hasEvents
+.type AInputQueue_hasEvents, %function
+.p2align 2
+AInputQueue_hasEvents:
+    svc #0x5a0182
+    bx lr
+.size AInputQueue_hasEvents, . - AInputQueue_hasEvents
+
+.global AInputQueue_preDispatchEvent
+.type AInputQueue_preDispatchEvent, %function
+.p2align 2
+AInputQueue_preDispatchEvent:
+    svc #0x5a0183
+    bx lr
+.size AInputQueue_preDispatchEvent, . - AInputQueue_preDispatchEvent
+
+.global AKeyEvent_fromJava
+.type AKeyEvent_fromJava, %function
+.p2align 2
+AKeyEvent_fromJava:
+    svc #0x5a0184
+    bx lr
+.size AKeyEvent_fromJava, . - AKeyEvent_fromJava
+
+.global AKeyEvent_getAction
+.type AKeyEvent_getAction, %function
+.p2align 2
+AKeyEvent_getAction:
+    svc #0x5a0185
+    bx lr
+.size AKeyEvent_getAction, . - AKeyEvent_getAction
+
+.global AKeyEvent_getDownTime
+.type AKeyEvent_getDownTime, %function
+.p2align 2
+AKeyEvent_getDownTime:
+    svc #0x5a0186
+    bx lr
+.size AKeyEvent_getDownTime, . - AKeyEvent_getDownTime
+
+.global AKeyEvent_getEventTime
+.type AKeyEvent_getEventTime, %function
+.p2align 2
+AKeyEvent_getEventTime:
+    svc #0x5a0187
+    bx lr
+.size AKeyEvent_getEventTime, . - AKeyEvent_getEventTime
+
+.global AKeyEvent_getFlags
+.type AKeyEvent_getFlags, %function
+.p2align 2
+AKeyEvent_getFlags:
+    svc #0x5a0188
+    bx lr
+.size AKeyEvent_getFlags, . - AKeyEvent_getFlags
+
+.global AKeyEvent_getKeyCode
+.type AKeyEvent_getKeyCode, %function
+.p2align 2
+AKeyEvent_getKeyCode:
+    svc #0x5a0189
+    bx lr
+.size AKeyEvent_getKeyCode, . - AKeyEvent_getKeyCode
+
+.global AKeyEvent_getMetaState
+.type AKeyEvent_getMetaState, %function
+.p2align 2
+AKeyEvent_getMetaState:
+    svc #0x5a018a
+    bx lr
+.size AKeyEvent_getMetaState, . - AKeyEvent_getMetaState
+
+.global AKeyEvent_getRepeatCount
+.type AKeyEvent_getRepeatCount, %function
+.p2align 2
+AKeyEvent_getRepeatCount:
+    svc #0x5a018b
+    bx lr
+.size AKeyEvent_getRepeatCount, . - AKeyEvent_getRepeatCount
+
+.global AKeyEvent_getScanCode
+.type AKeyEvent_getScanCode, %function
+.p2align 2
+AKeyEvent_getScanCode:
+    svc #0x5a018c
+    bx lr
+.size AKeyEvent_getScanCode, . - AKeyEvent_getScanCode
+
+.global AMotionEvent_fromJava
+.type AMotionEvent_fromJava, %function
+.p2align 2
+AMotionEvent_fromJava:
+    svc #0x5a018d
+    bx lr
+.size AMotionEvent_fromJava, . - AMotionEvent_fromJava
+
+.global AMotionEvent_getAction
+.type AMotionEvent_getAction, %function
+.p2align 2
+AMotionEvent_getAction:
+    svc #0x5a018e
+    bx lr
+.size AMotionEvent_getAction, . - AMotionEvent_getAction
+
+.global AMotionEvent_getActionButton
+.type AMotionEvent_getActionButton, %function
+.p2align 2
+AMotionEvent_getActionButton:
+    svc #0x5a018f
+    bx lr
+.size AMotionEvent_getActionButton, . - AMotionEvent_getActionButton
+
+.global AMotionEvent_getAxisValue
+.type AMotionEvent_getAxisValue, %function
+.p2align 2
+AMotionEvent_getAxisValue:
+    svc #0x5a0190
+    bx lr
+.size AMotionEvent_getAxisValue, . - AMotionEvent_getAxisValue
+
+.global AMotionEvent_getButtonState
+.type AMotionEvent_getButtonState, %function
+.p2align 2
+AMotionEvent_getButtonState:
+    svc #0x5a0191
+    bx lr
+.size AMotionEvent_getButtonState, . - AMotionEvent_getButtonState
+
+.global AMotionEvent_getClassification
+.type AMotionEvent_getClassification, %function
+.p2align 2
+AMotionEvent_getClassification:
+    svc #0x5a0192
+    bx lr
+.size AMotionEvent_getClassification, . - AMotionEvent_getClassification
+
+.global AMotionEvent_getDownTime
+.type AMotionEvent_getDownTime, %function
+.p2align 2
+AMotionEvent_getDownTime:
+    svc #0x5a0193
+    bx lr
+.size AMotionEvent_getDownTime, . - AMotionEvent_getDownTime
+
+.global AMotionEvent_getEdgeFlags
+.type AMotionEvent_getEdgeFlags, %function
+.p2align 2
+AMotionEvent_getEdgeFlags:
+    svc #0x5a0194
+    bx lr
+.size AMotionEvent_getEdgeFlags, . - AMotionEvent_getEdgeFlags
+
+.global AMotionEvent_getEventTime
+.type AMotionEvent_getEventTime, %function
+.p2align 2
+AMotionEvent_getEventTime:
+    svc #0x5a0195
+    bx lr
+.size AMotionEvent_getEventTime, . - AMotionEvent_getEventTime
+
+.global AMotionEvent_getFlags
+.type AMotionEvent_getFlags, %function
+.p2align 2
+AMotionEvent_getFlags:
+    svc #0x5a0196
+    bx lr
+.size AMotionEvent_getFlags, . - AMotionEvent_getFlags
+
+.global AMotionEvent_getHistoricalAxisValue
+.type AMotionEvent_getHistoricalAxisValue, %function
+.p2align 2
+AMotionEvent_getHistoricalAxisValue:
+    svc #0x5a0197
+    bx lr
+.size AMotionEvent_getHistoricalAxisValue, . - AMotionEvent_getHistoricalAxisValue
+
+.global AMotionEvent_getHistoricalEventTime
+.type AMotionEvent_getHistoricalEventTime, %function
+.p2align 2
+AMotionEvent_getHistoricalEventTime:
+    svc #0x5a0198
+    bx lr
+.size AMotionEvent_getHistoricalEventTime, . - AMotionEvent_getHistoricalEventTime
+
+.global AMotionEvent_getHistoricalOrientation
+.type AMotionEvent_getHistoricalOrientation, %function
+.p2align 2
+AMotionEvent_getHistoricalOrientation:
+    svc #0x5a0199
+    bx lr
+.size AMotionEvent_getHistoricalOrientation, . - AMotionEvent_getHistoricalOrientation
+
+.global AMotionEvent_getHistoricalPressure
+.type AMotionEvent_getHistoricalPressure, %function
+.p2align 2
+AMotionEvent_getHistoricalPressure:
+    svc #0x5a019a
+    bx lr
+.size AMotionEvent_getHistoricalPressure, . - AMotionEvent_getHistoricalPressure
+
+.global AMotionEvent_getHistoricalRawX
+.type AMotionEvent_getHistoricalRawX, %function
+.p2align 2
+AMotionEvent_getHistoricalRawX:
+    svc #0x5a019b
+    bx lr
+.size AMotionEvent_getHistoricalRawX, . - AMotionEvent_getHistoricalRawX
+
+.global AMotionEvent_getHistoricalRawY
+.type AMotionEvent_getHistoricalRawY, %function
+.p2align 2
+AMotionEvent_getHistoricalRawY:
+    svc #0x5a019c
+    bx lr
+.size AMotionEvent_getHistoricalRawY, . - AMotionEvent_getHistoricalRawY
+
+.global AMotionEvent_getHistoricalSize
+.type AMotionEvent_getHistoricalSize, %function
+.p2align 2
+AMotionEvent_getHistoricalSize:
+    svc #0x5a019d
+    bx lr
+.size AMotionEvent_getHistoricalSize, . - AMotionEvent_getHistoricalSize
+
+.global AMotionEvent_getHistoricalToolMajor
+.type AMotionEvent_getHistoricalToolMajor, %function
+.p2align 2
+AMotionEvent_getHistoricalToolMajor:
+    svc #0x5a019e
+    bx lr
+.size AMotionEvent_getHistoricalToolMajor, . - AMotionEvent_getHistoricalToolMajor
+
+.global AMotionEvent_getHistoricalToolMinor
+.type AMotionEvent_getHistoricalToolMinor, %function
+.p2align 2
+AMotionEvent_getHistoricalToolMinor:
+    svc #0x5a019f
+    bx lr
+.size AMotionEvent_getHistoricalToolMinor, . - AMotionEvent_getHistoricalToolMinor
+
+.global AMotionEvent_getHistoricalTouchMajor
+.type AMotionEvent_getHistoricalTouchMajor, %function
+.p2align 2
+AMotionEvent_getHistoricalTouchMajor:
+    svc #0x5a01a0
+    bx lr
+.size AMotionEvent_getHistoricalTouchMajor, . - AMotionEvent_getHistoricalTouchMajor
+
+.global AMotionEvent_getHistoricalTouchMinor
+.type AMotionEvent_getHistoricalTouchMinor, %function
+.p2align 2
+AMotionEvent_getHistoricalTouchMinor:
+    svc #0x5a01a1
+    bx lr
+.size AMotionEvent_getHistoricalTouchMinor, . - AMotionEvent_getHistoricalTouchMinor
+
+.global AMotionEvent_getHistoricalX
+.type AMotionEvent_getHistoricalX, %function
+.p2align 2
+AMotionEvent_getHistoricalX:
+    svc #0x5a01a2
+    bx lr
+.size AMotionEvent_getHistoricalX, . - AMotionEvent_getHistoricalX
+
+.global AMotionEvent_getHistoricalY
+.type AMotionEvent_getHistoricalY, %function
+.p2align 2
+AMotionEvent_getHistoricalY:
+    svc #0x5a01a3
+    bx lr
+.size AMotionEvent_getHistoricalY, . - AMotionEvent_getHistoricalY
+
+.global AMotionEvent_getHistorySize
+.type AMotionEvent_getHistorySize, %function
+.p2align 2
+AMotionEvent_getHistorySize:
+    svc #0x5a01a4
+    bx lr
+.size AMotionEvent_getHistorySize, . - AMotionEvent_getHistorySize
+
+.global AMotionEvent_getMetaState
+.type AMotionEvent_getMetaState, %function
+.p2align 2
+AMotionEvent_getMetaState:
+    svc #0x5a01a5
+    bx lr
+.size AMotionEvent_getMetaState, . - AMotionEvent_getMetaState
+
+.global AMotionEvent_getOrientation
+.type AMotionEvent_getOrientation, %function
+.p2align 2
+AMotionEvent_getOrientation:
+    svc #0x5a01a6
+    bx lr
+.size AMotionEvent_getOrientation, . - AMotionEvent_getOrientation
+
+.global AMotionEvent_getPointerCount
+.type AMotionEvent_getPointerCount, %function
+.p2align 2
+AMotionEvent_getPointerCount:
+    svc #0x5a01a7
+    bx lr
+.size AMotionEvent_getPointerCount, . - AMotionEvent_getPointerCount
+
+.global AMotionEvent_getPointerId
+.type AMotionEvent_getPointerId, %function
+.p2align 2
+AMotionEvent_getPointerId:
+    svc #0x5a01a8
+    bx lr
+.size AMotionEvent_getPointerId, . - AMotionEvent_getPointerId
+
+.global AMotionEvent_getPressure
+.type AMotionEvent_getPressure, %function
+.p2align 2
+AMotionEvent_getPressure:
+    svc #0x5a01a9
+    bx lr
+.size AMotionEvent_getPressure, . - AMotionEvent_getPressure
+
+.global AMotionEvent_getRawX
+.type AMotionEvent_getRawX, %function
+.p2align 2
+AMotionEvent_getRawX:
+    svc #0x5a01aa
+    bx lr
+.size AMotionEvent_getRawX, . - AMotionEvent_getRawX
+
+.global AMotionEvent_getRawY
+.type AMotionEvent_getRawY, %function
+.p2align 2
+AMotionEvent_getRawY:
+    svc #0x5a01ab
+    bx lr
+.size AMotionEvent_getRawY, . - AMotionEvent_getRawY
+
+.global AMotionEvent_getSize
+.type AMotionEvent_getSize, %function
+.p2align 2
+AMotionEvent_getSize:
+    svc #0x5a01ac
+    bx lr
+.size AMotionEvent_getSize, . - AMotionEvent_getSize
+
+.global AMotionEvent_getToolMajor
+.type AMotionEvent_getToolMajor, %function
+.p2align 2
+AMotionEvent_getToolMajor:
+    svc #0x5a01ad
+    bx lr
+.size AMotionEvent_getToolMajor, . - AMotionEvent_getToolMajor
+
+.global AMotionEvent_getToolMinor
+.type AMotionEvent_getToolMinor, %function
+.p2align 2
+AMotionEvent_getToolMinor:
+    svc #0x5a01ae
+    bx lr
+.size AMotionEvent_getToolMinor, . - AMotionEvent_getToolMinor
+
+.global AMotionEvent_getToolType
+.type AMotionEvent_getToolType, %function
+.p2align 2
+AMotionEvent_getToolType:
+    svc #0x5a01af
+    bx lr
+.size AMotionEvent_getToolType, . - AMotionEvent_getToolType
+
+.global AMotionEvent_getTouchMajor
+.type AMotionEvent_getTouchMajor, %function
+.p2align 2
+AMotionEvent_getTouchMajor:
+    svc #0x5a01b0
+    bx lr
+.size AMotionEvent_getTouchMajor, . - AMotionEvent_getTouchMajor
+
+.global AMotionEvent_getTouchMinor
+.type AMotionEvent_getTouchMinor, %function
+.p2align 2
+AMotionEvent_getTouchMinor:
+    svc #0x5a01b1
+    bx lr
+.size AMotionEvent_getTouchMinor, . - AMotionEvent_getTouchMinor
+
+.global AMotionEvent_getX
+.type AMotionEvent_getX, %function
+.p2align 2
+AMotionEvent_getX:
+    svc #0x5a01b2
+    bx lr
+.size AMotionEvent_getX, . - AMotionEvent_getX
+
+.global AMotionEvent_getXOffset
+.type AMotionEvent_getXOffset, %function
+.p2align 2
+AMotionEvent_getXOffset:
+    svc #0x5a01b3
+    bx lr
+.size AMotionEvent_getXOffset, . - AMotionEvent_getXOffset
+
+.global AMotionEvent_getXPrecision
+.type AMotionEvent_getXPrecision, %function
+.p2align 2
+AMotionEvent_getXPrecision:
+    svc #0x5a01b4
+    bx lr
+.size AMotionEvent_getXPrecision, . - AMotionEvent_getXPrecision
+
+.global AMotionEvent_getY
+.type AMotionEvent_getY, %function
+.p2align 2
+AMotionEvent_getY:
+    svc #0x5a01b5
+    bx lr
+.size AMotionEvent_getY, . - AMotionEvent_getY
+
+.global AMotionEvent_getYOffset
+.type AMotionEvent_getYOffset, %function
+.p2align 2
+AMotionEvent_getYOffset:
+    svc #0x5a01b6
+    bx lr
+.size AMotionEvent_getYOffset, . - AMotionEvent_getYOffset
+
+.global AMotionEvent_getYPrecision
+.type AMotionEvent_getYPrecision, %function
+.p2align 2
+AMotionEvent_getYPrecision:
+    svc #0x5a01b7
+    bx lr
+.size AMotionEvent_getYPrecision, . - AMotionEvent_getYPrecision
