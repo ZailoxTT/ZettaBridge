@@ -340,7 +340,11 @@ GuestJniEngine::GuestJniEngine(JniBackend& backend, GlBackend* gl_backend, HostG
     };
     host_looper_ = new HostLooper(*runtime_, looper_backend, std::move(looper_invoker));
     host_sensors_ = new HostSensors(*runtime_);
-    if (input_backend != nullptr) host_input_ = new HostInput(*runtime_, *input_backend);
+    if (input_backend != nullptr) {
+        HostLooper* looper = host_looper_;
+        host_input_ = new HostInput(*runtime_, *input_backend,
+                                    [looper](GuestThread& thread) { return looper->ensure_real_looper(thread); });
+    }
     host_compat_ = new HostPlatformCompat();
     if (gl_backend != nullptr) {
         host_gl_ = new HostGl(*runtime_, *gl_backend, HostGl::GuestAllocator{}, std::move(egl_context_probe));

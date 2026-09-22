@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <map>
+#include <vector>
 #include <utility>
 
 #include "zb/android_looper_backend.h"
@@ -37,6 +38,28 @@ public:
         fds_[std::make_pair(looper, fd)] = Entry{ident, events, callback, data};
         return 1;
     }
+
+    // Stands in for the real ALooper_pollOnce: dispatches the fds the test marked ready, then
+    // answers with what the NDK would. Only a thread that acquired a real looper polls this way.
+    int poll_once(int timeout_millis) override {
+        ++polls_;
+        last_timeout_ = timeout_millis;
+        if (ready_.empty()) return poll_result;
+        int result = -3;  // ALOOPER_POLL_TIMEOUT until something is dispatched
+        for (int fd : ready_) {
+            const auto entry = fds_.find(std::make_pair(current_, fd));
+            if (entry == fds_.end()) continue;
+            entry->second.callback(fd, 1 /* ALOOPER_EVENT_INPUT */, entry->second.data);
+            result = -2;  // ALOOPER_POLL_CALLBACK
+        }
+        ready_.clear();
+        return result;
+    }
+
+    void make_ready(int fd) { ready_.push_back(fd); }
+    int polls() const { return polls_; }
+    int last_timeout() const { return last_timeout_; }
+    int poll_result = -3;
 
     int remove_fd(std::uint64_t looper, int fd) override {
         if (looper != current_) return -1;
@@ -78,4 +101,7 @@ private:
     int wakes_ = 0;
     int acquires_ = 0;
     int releases_ = 0;
+    int polls_ = 0;
+    int last_timeout_ = -99;
+    std::vector<int> ready_;
 };

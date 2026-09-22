@@ -17,6 +17,7 @@ public:
                void* data) override;
     int remove_fd(std::uint64_t looper, int fd) override;
     void wake(std::uint64_t looper) override;
+    int poll_once(int timeout_millis) override;
 };
 
 }  // namespace zb

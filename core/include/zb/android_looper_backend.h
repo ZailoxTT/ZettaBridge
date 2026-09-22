@@ -40,6 +40,12 @@ public:
     virtual int remove_fd(std::uint64_t looper, int fd) = 0;
     // ALooper_wake: makes that looper return from its poll, on whatever thread runs it.
     virtual void wake(std::uint64_t looper) = 0;
+
+    // ALooper_pollOnce on the calling host thread's own looper: blocks up to timeout_millis and
+    // dispatches whatever that looper holds, our registrations among them. Only a guest thread
+    // that acquired a real looper of its own calls this; a borrower returns to Java and lets
+    // Looper.loop() do the polling. Returns the NDK result.
+    virtual int poll_once(int timeout_millis) = 0;
 };
 
 }  // namespace zb

@@ -157,8 +157,14 @@ bool HostInput::handle_host_call(std::uint32_t index, GuestThread& thread) {
         void* queue = live_queue(regs[0]);
         if (queue == nullptr) { regs[0] = 0; return reject("AInputQueue_attachLooper", regs[0]); }
         // regs[1] is the guest's looper, regs[3] and regs[4] its callback and data. A host
-        // AInputQueue has no descriptor we could poll, so the queue goes to the real Android
-        // looper of this host thread and the guest's own poll picks it up from there.
+        // AInputQueue has no descriptor we could poll, so this thread must first have a real
+        // Android looper; the queue then goes to it and the guest's own poll picks it up.
+        const bool ready = real_looper_ ? real_looper_(thread) : false;
+        if (!ready) {
+            runtime_report().note_jni_detail("input-attach", "no real looper on this thread", true);
+            log("AInputQueue_attachLooper: this thread has no real looper, so the queue will not "
+                "deliver");
+        }
         backend_.queue_attach_looper(queue, static_cast<std::int32_t>(regs[2]));
         regs[0] = 0;
         return true;

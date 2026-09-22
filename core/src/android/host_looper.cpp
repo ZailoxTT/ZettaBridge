@@ -106,7 +106,12 @@ struct HostLooper::Impl {
         int wake_fd = -1;  // guest-path wake eventfd; -1 on an attached looper
         // Attached: this looper lives on a host thread whose own Android looper does the polling.
         bool attached = false;
-        std::uint64_t real = 0;  // backend handle while attached
+        // A guest-path looper that also acquired a real Android looper on its own host thread,
+        // because an input queue was attached to it: a host AInputQueue has no descriptor we
+        // could poll ourselves. Its registrations live on the real looper and its pollOnce is
+        // the real one, but unlike a borrower this thread does the polling itself.
+        bool real_backed = false;
+        std::uint64_t real = 0;  // backend handle while attached or real-backed
         std::unordered_map<int, Registration> registrations;
     };
 
@@ -441,7 +446,7 @@ struct HostLooper::Impl {
             }
             serial = next_serial++;
             looper.registrations[fd] = Registration{fd, ident, events, callback, data, serial};
-            if (looper.attached) {
+            if (looper.attached || looper.real_backed) {
                 real = looper.real;
                 binding = bind_locked(handle, fd, callback, data, serial);
             } else {
@@ -464,6 +469,67 @@ struct HostLooper::Impl {
         return 1;
     }
 
+    // Gives this thread's looper a real Android looper and moves its registrations onto it. The
+    // caller is AInputQueue_attachLooper: a host input queue can only be polled by a real looper,
+    // and this thread is a real host thread, so it can have one.
+    bool ensure_real_looper(GuestThread& thread) {
+        if (backend == nullptr) return false;
+        std::uint32_t handle = 0;
+        int options = 0;
+        std::vector<Registration> registrations;
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            const auto thread_it = thread_loopers.find(&thread);
+            if (thread_it == thread_loopers.end()) return false;
+            const auto looper_it = loopers.find(thread_it->second);
+            if (looper_it == loopers.end()) return false;
+            Looper& looper = *looper_it->second;
+            if (looper.attached || looper.real_backed) return true;  // already served by a real looper
+            handle = thread_it->second;
+            options = looper.options;
+            for (const auto& [fd, registration] : looper.registrations) {
+                (void)fd;
+                registrations.push_back(registration);
+            }
+        }
+
+        const std::uint64_t real = backend->prepare(options);
+        if (real == 0) {
+            log("cannot give this guest thread a real looper; an input queue attached to it will "
+                "never deliver");
+            return false;
+        }
+        for (const Registration& registration : registrations) {
+            Binding* binding = nullptr;
+            {
+                std::lock_guard<std::mutex> lock(mutex);
+                binding = bind_locked(handle, registration.fd, registration.callback, registration.data,
+                                      registration.serial);
+            }
+            backend->add_fd(real, registration.fd, registration.ident, registration.events,
+                            &Impl::attached_callback, binding);
+        }
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            const auto looper_it = loopers.find(handle);
+            if (looper_it == loopers.end()) return false;
+            looper_it->second->real = real;
+            looper_it->second->real_backed = true;
+        }
+        // Anything already waiting in the old poll must come back and take the new path.
+        signal_eventfd(wake_fd_of(handle));
+        log("guest looper 0x%08x now runs on a real Android looper (%zu registrations moved)", handle,
+            registrations.size());
+        runtime_report().note_jni_detail("looper-real", "input queue attached", true);
+        return true;
+    }
+
+    int wake_fd_of(std::uint32_t handle) {
+        std::lock_guard<std::mutex> lock(mutex);
+        const auto it = loopers.find(handle);
+        return it != loopers.end() ? it->second->wake_fd : -1;
+    }
+
     int remove_fd(std::uint32_t handle, int fd) {
         int wake_fd = -1;
         std::uint64_t real = 0;
@@ -473,7 +539,7 @@ struct HostLooper::Impl {
             if (it == loopers.end()) return -1;
             Looper& looper = *it->second;
             if (looper.registrations.erase(fd) == 0) return 0;
-            if (looper.attached) {
+            if (looper.attached || looper.real_backed) {
                 real = looper.real;
                 retire_locked(handle, fd);
             } else {
@@ -515,6 +581,7 @@ struct HostLooper::Impl {
         std::uint32_t looper_handle = 0;
         int wake_fd = -1;
         bool attached = false;
+        bool real_backed = false;
         std::vector<Registration> registrations;
         {
             std::lock_guard<std::mutex> lock(mutex);
@@ -525,6 +592,7 @@ struct HostLooper::Impl {
             looper_handle = thread_it->second;
             wake_fd = looper_it->second->wake_fd;
             attached = looper_it->second->attached;
+            real_backed = looper_it->second->real_backed;
             registrations.reserve(looper_it->second->registrations.size());
             for (const auto& [fd, registration] : looper_it->second->registrations) {
                 (void)fd;
@@ -547,6 +615,14 @@ struct HostLooper::Impl {
             report_last(thread, registrations.size(), result);
             return result;
         };
+
+        if (real_backed) {
+            // This thread owns a real Android looper, and every registration was handed to it,
+            // so the real pollOnce is the poll: it blocks and dispatches, ours included. The out
+            // parameters stay unserved here, because an input queue is a callback registration
+            // and that is what this mode exists for.
+            return finish(backend->poll_once(timeout));
+        }
 
         if (attached) {
             // The guest is asking to run a loop the host thread's Java Looper.loop() already
@@ -640,6 +716,10 @@ HostLooper::HostLooper(LibraryRuntime& runtime, AndroidLooperBackend* backend, G
                        BorrowerProbe borrower_probe)
     : impl_(std::make_unique<Impl>(runtime, backend, std::move(invoker), std::move(borrower_probe))) {}
 HostLooper::~HostLooper() = default;
+
+bool HostLooper::ensure_real_looper(GuestThread& thread) {
+    return impl_->ensure_real_looper(thread);
+}
 
 bool HostLooper::handle_host_call(std::uint32_t index, GuestThread& thread) {
     bool valid = true;

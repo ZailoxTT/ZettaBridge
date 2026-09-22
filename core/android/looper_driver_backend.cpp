@@ -52,4 +52,10 @@ void AndroidLooperDriverBackend::wake(std::uint64_t looper) {
     if (looper != 0) ALooper_wake(L(looper));
 }
 
+int AndroidLooperDriverBackend::poll_once(int timeout_millis) {
+    // The callbacks this dispatches are ours (attached_callback), so the guest is re-entered from
+    // inside this call, on this same thread, which is exactly where the guest asked to poll.
+    return ALooper_pollOnce(timeout_millis, nullptr, nullptr, nullptr);
+}
+
 }  // namespace zb

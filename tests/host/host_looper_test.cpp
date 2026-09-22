@@ -253,6 +253,77 @@ void run_borrower() {
     std::puts("host_looper_test borrower PASS");
 }
 
+// The third mode: a guest thread that attaches an input queue. It is a real host thread, so it
+// can own a real Android looper, and from then on its registrations live there and its pollOnce
+// is the real one - unlike a borrower, which returns to Java and never polls.
+void run_real_looper() {
+    zb::LibraryRuntime runtime;
+    CHECK(runtime.memory().map_anon(kGuestPage, 0x1000, PROT_READ | PROT_WRITE));
+    Dynarmic::ExclusiveMonitor monitor(1);
+    zb::GuestThread guest(runtime.memory(), &monitor, 0, false, zb::kCarrierCodeCacheSize);
+
+    MockAndroidLooper backend;
+    std::vector<std::uint32_t> invoked;
+    const zb::HostLooper::GuestInvoker invoker =
+        [&](std::uint32_t function, const zb::GuestCall& args) -> std::optional<zb::GuestResult> {
+        (void)args;
+        invoked.push_back(function);
+        zb::GuestResult result;
+        result.r0 = 1;
+        return result;
+    };
+    // No thread is a borrower here.
+    const zb::HostLooper::BorrowerProbe probe = [](const zb::GuestThread&) { return false; };
+    zb::HostLooper looper(runtime, &backend, invoker, probe);
+
+    const int fd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+    CHECK(fd >= 0);
+
+    // Before the queue: an ordinary guest looper, polled by us, with the backend untouched.
+    const std::uint32_t handle = call(looper, guest, zb::ZB_COMPAT_HC_ALooper_prepare, 0);
+    CHECK(handle != 0);
+    CHECK(backend.prepares() == 0);
+    CHECK(add_fd(looper, guest, runtime.memory(), handle, fd, -1, 1, 0x3000, 0xabc) == 1);
+    CHECK(backend.registrations() == 0);
+
+    // Attaching an input queue promotes the thread, and what it already watched moves across.
+    CHECK(looper.ensure_real_looper(guest));
+    CHECK(backend.prepares() == 1);
+    const std::uint64_t real = backend.current();
+    CHECK(real != 0 && backend.registered(real, fd));
+    // Asking twice changes nothing: the thread already has its looper.
+    CHECK(looper.ensure_real_looper(guest));
+    CHECK(backend.prepares() == 1);
+
+    // From now on registrations go straight to the real looper.
+    const int second = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+    CHECK(second >= 0);
+    CHECK(add_fd(looper, guest, runtime.memory(), handle, second, -1, 1, 0x4000, 0xdef) == 1);
+    CHECK(backend.registered(real, second));
+
+    // pollOnce is the real one: the timeout is passed through and a ready fd runs the guest
+    // callback from inside that call, on this same thread.
+    backend.poll_result = -3;  // ALOOPER_POLL_TIMEOUT
+    CHECK(static_cast<std::int32_t>(call(looper, guest, zb::ZB_COMPAT_HC_ALooper_pollOnce, 250, 0, 0, 0)) == -3);
+    CHECK(backend.polls() == 1 && backend.last_timeout() == 250);
+    CHECK(invoked.empty());
+
+    backend.make_ready(second);
+    CHECK(static_cast<std::int32_t>(call(looper, guest, zb::ZB_COMPAT_HC_ALooper_pollOnce, -1, 0, 0, 0)) == -2);
+    CHECK(backend.polls() == 2 && backend.last_timeout() == -1);
+    CHECK(invoked.size() == 1 && invoked[0] == 0x4000);
+
+    // wake and removeFd reach the real looper too.
+    CHECK(call(looper, guest, zb::ZB_COMPAT_HC_ALooper_wake, handle) == 0);
+    CHECK(backend.wakes() == 1);
+    CHECK(call(looper, guest, zb::ZB_COMPAT_HC_ALooper_removeFd, handle,
+               static_cast<std::uint32_t>(second)) == 1);
+    CHECK(!backend.registered(real, second));
+
+    CHECK(close(fd) == 0 && close(second) == 0);
+    std::puts("host_looper_test real-looper PASS");
+}
+
 void run_guest(int argc, char** argv) {
     CHECK(argc == 4);
     auto* vm = new zb::mock::MockJvm();
@@ -302,6 +373,7 @@ int main(int argc, char** argv) {
     if (argc == 1) {
         run_unit();
         run_borrower();
+        run_real_looper();
         return 0;
     }
     run_guest(argc, argv);

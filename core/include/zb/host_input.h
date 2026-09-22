@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -20,7 +21,14 @@ namespace zb {
 // event past its life would otherwise read framework memory that has been reused.
 class HostInput {
 public:
-    HostInput(LibraryRuntime& runtime, InputBackend& backend) : runtime_(runtime), backend_(backend) {}
+    // Called when the guest attaches a queue to its looper: the calling guest thread must end up
+    // with a real Android looper, because a host AInputQueue has no descriptor we could poll.
+    // Without one (the host build, or a platform that refuses) the attach is recorded and the
+    // queue simply never delivers, which the report says.
+    using RealLooperRequest = std::function<bool(GuestThread& thread)>;
+
+    HostInput(LibraryRuntime& runtime, InputBackend& backend, RealLooperRequest real_looper = {})
+        : runtime_(runtime), backend_(backend), real_looper_(std::move(real_looper)) {}
     HostInput(const HostInput&) = delete;
     HostInput& operator=(const HostInput&) = delete;
 
@@ -45,6 +53,7 @@ private:
 
     LibraryRuntime& runtime_;
     InputBackend& backend_;
+    RealLooperRequest real_looper_;
     GlobalHandles queues_{HandleKind::Global};
     GlobalHandles events_{HandleKind::Global};
     mutable std::mutex mutex_;
