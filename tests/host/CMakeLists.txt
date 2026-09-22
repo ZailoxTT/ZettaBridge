@@ -173,6 +173,14 @@ add_test(NAME library_runtime_test COMMAND library_runtime_test
     ${CMAKE_SOURCE_DIR}/build/guest/lib/libzbcallprobe.so)
 
 # Needs tools/build_guest.sh and the extracted sysroot.
+add_executable(native_activity_probe_test native_activity_probe_test.cpp)
+target_link_libraries(native_activity_probe_test PRIVATE zbcore)
+add_test(NAME native_activity_probe_test COMMAND native_activity_probe_test
+    ${CMAKE_SOURCE_DIR}/sysroot
+    ${CMAKE_SOURCE_DIR}/build/guest/zbhost
+    ${CMAKE_SOURCE_DIR}/build/guest/lib/libzbnativeprobe.so)
+
+# Needs tools/build_guest.sh and the extracted sysroot.
 add_executable(jni_bridge_test jni_bridge_test.cpp)
 target_link_libraries(jni_bridge_test PRIVATE zbmockjvm)
 add_test(NAME jni_bridge_test COMMAND jni_bridge_test

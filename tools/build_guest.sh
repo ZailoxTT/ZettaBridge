@@ -61,6 +61,9 @@ cp "$TOOLCHAIN/sysroot/usr/lib/arm-linux-androideabi/libc++_shared.so" "$OUT/lib
     -Wl,-soname,libzbloadnoonload.so -o "$OUT/lib/libzbloadnoonload.so" "$ROOT/guest/testlib/zbloadprobe.c"
 "$CC" -shared -fPIC -O2 -Wall -Wextra -Wno-unused-parameter -DZB_LOAD_UNKNOWN_EXPORT \
     -Wl,-soname,libzbloadunknown.so -o "$OUT/lib/libzbloadunknown.so" "$ROOT/guest/testlib/zbloadprobe.c"
+# A guest NativeActivity for native_activity_probe_test.
+"$CC" -shared -fPIC -O2 -Wall -Wextra -Wno-unused-parameter -Wl,-soname,libzbnativeprobe.so \
+    -o "$OUT/lib/libzbnativeprobe.so" "$ROOT/guest/testlib/zbnativeprobe.c"
 # A shim whose JNI_OnLoad opens the library that carries the natives, as Unity plugins do.
 "$CC" -shared -fPIC -O2 -Wall -Wextra -Wno-unused-parameter -Wl,-soname,libzbloadhidden.so \
     -o "$OUT/lib/libzbloadhidden.so" "$ROOT/guest/testlib/zbloadhidden.c"
