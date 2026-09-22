@@ -178,6 +178,15 @@ def input_names():
     return sorted(names)
 
 
+def configuration_names():
+    """Every AConfiguration_* entry point of the NDK header."""
+    names = set()
+    text = open(os.path.join(INCLUDE, "android", "configuration.h")).read()
+    for match in re.finditer(r"^[A-Za-z_][A-Za-z0-9_ \*]*?\b(AConfiguration\w*)\s*\(", text, re.M):
+        names.add(match.group(1))
+    return sorted(names)
+
+
 LIBRARIES = [
     ("libGLESv2", gles2_names),
     ("libandroid", android_names),
@@ -200,6 +209,8 @@ LIBRARIES = [
     # Input: NativeActivity guests (phase 7b). Indices in core/include/zb/input_hostcalls.h,
     # which tools/gen_input.py generates from this order.
     ("libandroid", input_names),
+    # Configuration, after input for the same append-only reason.
+    ("libandroid", configuration_names),
 ]
 
 

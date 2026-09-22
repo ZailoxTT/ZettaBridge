@@ -1,6 +1,7 @@
 set(ZB_HOST_TESTS
     fault_pc_test
     egl_marshal_test
+    configuration_test
     elf_fixups_test
     elf_symbols_test
     guest_memory_test
@@ -36,7 +37,7 @@ find_package(Python3 REQUIRED COMPONENTS Interpreter)
 add_test(NAME gen_jni_check COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/gen_jni.py --check)
 add_test(NAME gen_gles_check COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/gen_gles.py --check)
 add_test(NAME gen_egl_check COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/gen_egl.py --check)
-add_test(NAME gen_input_check COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/gen_input.py --check)
+add_test(NAME gen_ndk_check COMMAND Python3::Interpreter ${CMAKE_SOURCE_DIR}/tools/gen_ndk.py --check)
 
 target_sources(egl_marshal_test PRIVATE mock_egl.cpp)
 target_sources(gles_marshal_test PRIVATE mock_gles.cpp)

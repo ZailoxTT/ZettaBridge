@@ -28,6 +28,10 @@ public:
     // unimplemented AAsset* stubs in the 142-160 range).
     bool handle_host_call(std::uint32_t index, GuestThread& thread);
 
+    // The host AAssetManager behind a guest handle, or 0. HostConfiguration needs it for
+    // AConfiguration_fromAssetManager, which takes the manager the guest already holds.
+    std::uint64_t manager_for(std::uint32_t handle) const { return require_manager(handle); }
+
 private:
     std::uint64_t require_manager(std::uint32_t handle) const;
     std::uint64_t require_asset(std::uint32_t handle) const;

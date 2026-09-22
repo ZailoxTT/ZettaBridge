@@ -1058,3 +1058,411 @@ AMotionEvent_getYPrecision:
     svc #0x5a01b7
     bx lr
 .size AMotionEvent_getYPrecision, . - AMotionEvent_getYPrecision
+
+.global AConfiguration_copy
+.type AConfiguration_copy, %function
+.p2align 2
+AConfiguration_copy:
+    svc #0x5a01b8
+    bx lr
+.size AConfiguration_copy, . - AConfiguration_copy
+
+.global AConfiguration_delete
+.type AConfiguration_delete, %function
+.p2align 2
+AConfiguration_delete:
+    svc #0x5a01b9
+    bx lr
+.size AConfiguration_delete, . - AConfiguration_delete
+
+.global AConfiguration_diff
+.type AConfiguration_diff, %function
+.p2align 2
+AConfiguration_diff:
+    svc #0x5a01ba
+    bx lr
+.size AConfiguration_diff, . - AConfiguration_diff
+
+.global AConfiguration_fromAssetManager
+.type AConfiguration_fromAssetManager, %function
+.p2align 2
+AConfiguration_fromAssetManager:
+    svc #0x5a01bb
+    bx lr
+.size AConfiguration_fromAssetManager, . - AConfiguration_fromAssetManager
+
+.global AConfiguration_getCountry
+.type AConfiguration_getCountry, %function
+.p2align 2
+AConfiguration_getCountry:
+    svc #0x5a01bc
+    bx lr
+.size AConfiguration_getCountry, . - AConfiguration_getCountry
+
+.global AConfiguration_getDensity
+.type AConfiguration_getDensity, %function
+.p2align 2
+AConfiguration_getDensity:
+    svc #0x5a01bd
+    bx lr
+.size AConfiguration_getDensity, . - AConfiguration_getDensity
+
+.global AConfiguration_getGrammaticalGender
+.type AConfiguration_getGrammaticalGender, %function
+.p2align 2
+AConfiguration_getGrammaticalGender:
+    svc #0x5a01be
+    bx lr
+.size AConfiguration_getGrammaticalGender, . - AConfiguration_getGrammaticalGender
+
+.global AConfiguration_getKeyboard
+.type AConfiguration_getKeyboard, %function
+.p2align 2
+AConfiguration_getKeyboard:
+    svc #0x5a01bf
+    bx lr
+.size AConfiguration_getKeyboard, . - AConfiguration_getKeyboard
+
+.global AConfiguration_getKeysHidden
+.type AConfiguration_getKeysHidden, %function
+.p2align 2
+AConfiguration_getKeysHidden:
+    svc #0x5a01c0
+    bx lr
+.size AConfiguration_getKeysHidden, . - AConfiguration_getKeysHidden
+
+.global AConfiguration_getLanguage
+.type AConfiguration_getLanguage, %function
+.p2align 2
+AConfiguration_getLanguage:
+    svc #0x5a01c1
+    bx lr
+.size AConfiguration_getLanguage, . - AConfiguration_getLanguage
+
+.global AConfiguration_getLayoutDirection
+.type AConfiguration_getLayoutDirection, %function
+.p2align 2
+AConfiguration_getLayoutDirection:
+    svc #0x5a01c2
+    bx lr
+.size AConfiguration_getLayoutDirection, . - AConfiguration_getLayoutDirection
+
+.global AConfiguration_getMcc
+.type AConfiguration_getMcc, %function
+.p2align 2
+AConfiguration_getMcc:
+    svc #0x5a01c3
+    bx lr
+.size AConfiguration_getMcc, . - AConfiguration_getMcc
+
+.global AConfiguration_getMnc
+.type AConfiguration_getMnc, %function
+.p2align 2
+AConfiguration_getMnc:
+    svc #0x5a01c4
+    bx lr
+.size AConfiguration_getMnc, . - AConfiguration_getMnc
+
+.global AConfiguration_getNavHidden
+.type AConfiguration_getNavHidden, %function
+.p2align 2
+AConfiguration_getNavHidden:
+    svc #0x5a01c5
+    bx lr
+.size AConfiguration_getNavHidden, . - AConfiguration_getNavHidden
+
+.global AConfiguration_getNavigation
+.type AConfiguration_getNavigation, %function
+.p2align 2
+AConfiguration_getNavigation:
+    svc #0x5a01c6
+    bx lr
+.size AConfiguration_getNavigation, . - AConfiguration_getNavigation
+
+.global AConfiguration_getOrientation
+.type AConfiguration_getOrientation, %function
+.p2align 2
+AConfiguration_getOrientation:
+    svc #0x5a01c7
+    bx lr
+.size AConfiguration_getOrientation, . - AConfiguration_getOrientation
+
+.global AConfiguration_getScreenHeightDp
+.type AConfiguration_getScreenHeightDp, %function
+.p2align 2
+AConfiguration_getScreenHeightDp:
+    svc #0x5a01c8
+    bx lr
+.size AConfiguration_getScreenHeightDp, . - AConfiguration_getScreenHeightDp
+
+.global AConfiguration_getScreenLong
+.type AConfiguration_getScreenLong, %function
+.p2align 2
+AConfiguration_getScreenLong:
+    svc #0x5a01c9
+    bx lr
+.size AConfiguration_getScreenLong, . - AConfiguration_getScreenLong
+
+.global AConfiguration_getScreenRound
+.type AConfiguration_getScreenRound, %function
+.p2align 2
+AConfiguration_getScreenRound:
+    svc #0x5a01ca
+    bx lr
+.size AConfiguration_getScreenRound, . - AConfiguration_getScreenRound
+
+.global AConfiguration_getScreenSize
+.type AConfiguration_getScreenSize, %function
+.p2align 2
+AConfiguration_getScreenSize:
+    svc #0x5a01cb
+    bx lr
+.size AConfiguration_getScreenSize, . - AConfiguration_getScreenSize
+
+.global AConfiguration_getScreenWidthDp
+.type AConfiguration_getScreenWidthDp, %function
+.p2align 2
+AConfiguration_getScreenWidthDp:
+    svc #0x5a01cc
+    bx lr
+.size AConfiguration_getScreenWidthDp, . - AConfiguration_getScreenWidthDp
+
+.global AConfiguration_getSdkVersion
+.type AConfiguration_getSdkVersion, %function
+.p2align 2
+AConfiguration_getSdkVersion:
+    svc #0x5a01cd
+    bx lr
+.size AConfiguration_getSdkVersion, . - AConfiguration_getSdkVersion
+
+.global AConfiguration_getSmallestScreenWidthDp
+.type AConfiguration_getSmallestScreenWidthDp, %function
+.p2align 2
+AConfiguration_getSmallestScreenWidthDp:
+    svc #0x5a01ce
+    bx lr
+.size AConfiguration_getSmallestScreenWidthDp, . - AConfiguration_getSmallestScreenWidthDp
+
+.global AConfiguration_getTouchscreen
+.type AConfiguration_getTouchscreen, %function
+.p2align 2
+AConfiguration_getTouchscreen:
+    svc #0x5a01cf
+    bx lr
+.size AConfiguration_getTouchscreen, . - AConfiguration_getTouchscreen
+
+.global AConfiguration_getUiModeNight
+.type AConfiguration_getUiModeNight, %function
+.p2align 2
+AConfiguration_getUiModeNight:
+    svc #0x5a01d0
+    bx lr
+.size AConfiguration_getUiModeNight, . - AConfiguration_getUiModeNight
+
+.global AConfiguration_getUiModeType
+.type AConfiguration_getUiModeType, %function
+.p2align 2
+AConfiguration_getUiModeType:
+    svc #0x5a01d1
+    bx lr
+.size AConfiguration_getUiModeType, . - AConfiguration_getUiModeType
+
+.global AConfiguration_isBetterThan
+.type AConfiguration_isBetterThan, %function
+.p2align 2
+AConfiguration_isBetterThan:
+    svc #0x5a01d2
+    bx lr
+.size AConfiguration_isBetterThan, . - AConfiguration_isBetterThan
+
+.global AConfiguration_match
+.type AConfiguration_match, %function
+.p2align 2
+AConfiguration_match:
+    svc #0x5a01d3
+    bx lr
+.size AConfiguration_match, . - AConfiguration_match
+
+.global AConfiguration_new
+.type AConfiguration_new, %function
+.p2align 2
+AConfiguration_new:
+    svc #0x5a01d4
+    bx lr
+.size AConfiguration_new, . - AConfiguration_new
+
+.global AConfiguration_setCountry
+.type AConfiguration_setCountry, %function
+.p2align 2
+AConfiguration_setCountry:
+    svc #0x5a01d5
+    bx lr
+.size AConfiguration_setCountry, . - AConfiguration_setCountry
+
+.global AConfiguration_setDensity
+.type AConfiguration_setDensity, %function
+.p2align 2
+AConfiguration_setDensity:
+    svc #0x5a01d6
+    bx lr
+.size AConfiguration_setDensity, . - AConfiguration_setDensity
+
+.global AConfiguration_setGrammaticalGender
+.type AConfiguration_setGrammaticalGender, %function
+.p2align 2
+AConfiguration_setGrammaticalGender:
+    svc #0x5a01d7
+    bx lr
+.size AConfiguration_setGrammaticalGender, . - AConfiguration_setGrammaticalGender
+
+.global AConfiguration_setKeyboard
+.type AConfiguration_setKeyboard, %function
+.p2align 2
+AConfiguration_setKeyboard:
+    svc #0x5a01d8
+    bx lr
+.size AConfiguration_setKeyboard, . - AConfiguration_setKeyboard
+
+.global AConfiguration_setKeysHidden
+.type AConfiguration_setKeysHidden, %function
+.p2align 2
+AConfiguration_setKeysHidden:
+    svc #0x5a01d9
+    bx lr
+.size AConfiguration_setKeysHidden, . - AConfiguration_setKeysHidden
+
+.global AConfiguration_setLanguage
+.type AConfiguration_setLanguage, %function
+.p2align 2
+AConfiguration_setLanguage:
+    svc #0x5a01da
+    bx lr
+.size AConfiguration_setLanguage, . - AConfiguration_setLanguage
+
+.global AConfiguration_setLayoutDirection
+.type AConfiguration_setLayoutDirection, %function
+.p2align 2
+AConfiguration_setLayoutDirection:
+    svc #0x5a01db
+    bx lr
+.size AConfiguration_setLayoutDirection, . - AConfiguration_setLayoutDirection
+
+.global AConfiguration_setMcc
+.type AConfiguration_setMcc, %function
+.p2align 2
+AConfiguration_setMcc:
+    svc #0x5a01dc
+    bx lr
+.size AConfiguration_setMcc, . - AConfiguration_setMcc
+
+.global AConfiguration_setMnc
+.type AConfiguration_setMnc, %function
+.p2align 2
+AConfiguration_setMnc:
+    svc #0x5a01dd
+    bx lr
+.size AConfiguration_setMnc, . - AConfiguration_setMnc
+
+.global AConfiguration_setNavHidden
+.type AConfiguration_setNavHidden, %function
+.p2align 2
+AConfiguration_setNavHidden:
+    svc #0x5a01de
+    bx lr
+.size AConfiguration_setNavHidden, . - AConfiguration_setNavHidden
+
+.global AConfiguration_setNavigation
+.type AConfiguration_setNavigation, %function
+.p2align 2
+AConfiguration_setNavigation:
+    svc #0x5a01df
+    bx lr
+.size AConfiguration_setNavigation, . - AConfiguration_setNavigation
+
+.global AConfiguration_setOrientation
+.type AConfiguration_setOrientation, %function
+.p2align 2
+AConfiguration_setOrientation:
+    svc #0x5a01e0
+    bx lr
+.size AConfiguration_setOrientation, . - AConfiguration_setOrientation
+
+.global AConfiguration_setScreenHeightDp
+.type AConfiguration_setScreenHeightDp, %function
+.p2align 2
+AConfiguration_setScreenHeightDp:
+    svc #0x5a01e1
+    bx lr
+.size AConfiguration_setScreenHeightDp, . - AConfiguration_setScreenHeightDp
+
+.global AConfiguration_setScreenLong
+.type AConfiguration_setScreenLong, %function
+.p2align 2
+AConfiguration_setScreenLong:
+    svc #0x5a01e2
+    bx lr
+.size AConfiguration_setScreenLong, . - AConfiguration_setScreenLong
+
+.global AConfiguration_setScreenRound
+.type AConfiguration_setScreenRound, %function
+.p2align 2
+AConfiguration_setScreenRound:
+    svc #0x5a01e3
+    bx lr
+.size AConfiguration_setScreenRound, . - AConfiguration_setScreenRound
+
+.global AConfiguration_setScreenSize
+.type AConfiguration_setScreenSize, %function
+.p2align 2
+AConfiguration_setScreenSize:
+    svc #0x5a01e4
+    bx lr
+.size AConfiguration_setScreenSize, . - AConfiguration_setScreenSize
+
+.global AConfiguration_setScreenWidthDp
+.type AConfiguration_setScreenWidthDp, %function
+.p2align 2
+AConfiguration_setScreenWidthDp:
+    svc #0x5a01e5
+    bx lr
+.size AConfiguration_setScreenWidthDp, . - AConfiguration_setScreenWidthDp
+
+.global AConfiguration_setSdkVersion
+.type AConfiguration_setSdkVersion, %function
+.p2align 2
+AConfiguration_setSdkVersion:
+    svc #0x5a01e6
+    bx lr
+.size AConfiguration_setSdkVersion, . - AConfiguration_setSdkVersion
+
+.global AConfiguration_setSmallestScreenWidthDp
+.type AConfiguration_setSmallestScreenWidthDp, %function
+.p2align 2
+AConfiguration_setSmallestScreenWidthDp:
+    svc #0x5a01e7
+    bx lr
+.size AConfiguration_setSmallestScreenWidthDp, . - AConfiguration_setSmallestScreenWidthDp
+
+.global AConfiguration_setTouchscreen
+.type AConfiguration_setTouchscreen, %function
+.p2align 2
+AConfiguration_setTouchscreen:
+    svc #0x5a01e8
+    bx lr
+.size AConfiguration_setTouchscreen, . - AConfiguration_setTouchscreen
+
+.global AConfiguration_setUiModeNight
+.type AConfiguration_setUiModeNight, %function
+.p2align 2
+AConfiguration_setUiModeNight:
+    svc #0x5a01e9
+    bx lr
+.size AConfiguration_setUiModeNight, . - AConfiguration_setUiModeNight
+
+.global AConfiguration_setUiModeType
+.type AConfiguration_setUiModeType, %function
+.p2align 2
+AConfiguration_setUiModeType:
+    svc #0x5a01ea
+    bx lr
+.size AConfiguration_setUiModeType, . - AConfiguration_setUiModeType

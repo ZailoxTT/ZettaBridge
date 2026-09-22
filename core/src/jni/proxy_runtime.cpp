@@ -327,7 +327,8 @@ std::optional<std::string> ProxyRuntime::last_load_error() const {
 
 GuestJniEngine::GuestJniEngine(JniBackend& backend, GlBackend* gl_backend, HostGl::EglContextProbe egl_context_probe,
                                AssetBackend* asset_backend, EglBackend* egl_backend, NativeWindowBackend* window_backend,
-                               AndroidLooperBackend* looper_backend, InputBackend* input_backend)
+                               AndroidLooperBackend* looper_backend, InputBackend* input_backend,
+                               ConfigurationBackend* configuration_backend)
     : backend_(backend),
       runtime_(new LibraryRuntime()),
       host_jni_(new HostJni(*runtime_, backend)),
@@ -340,6 +341,15 @@ GuestJniEngine::GuestJniEngine(JniBackend& backend, GlBackend* gl_backend, HostG
     };
     host_looper_ = new HostLooper(*runtime_, looper_backend, std::move(looper_invoker));
     host_sensors_ = new HostSensors(*runtime_);
+    if (configuration_backend != nullptr) {
+        HostAssets* assets = host_assets_;
+        host_configuration_ = new HostConfiguration(*runtime_, *configuration_backend,
+                                                    [assets](std::uint32_t handle) -> void* {
+                                                        if (assets == nullptr) return nullptr;
+                                                        const std::uint64_t manager = assets->manager_for(handle);
+                                                        return reinterpret_cast<void*>(static_cast<std::uintptr_t>(manager));
+                                                    });
+    }
     if (input_backend != nullptr) {
         HostLooper* looper = host_looper_;
         host_input_ = new HostInput(*runtime_, *input_backend,
@@ -371,13 +381,14 @@ GuestJniEngine::GuestJniEngine(JniBackend& backend, GlBackend* gl_backend, HostG
     HostLooper* host_looper = host_looper_;
     HostSensors* host_sensors = host_sensors_;
     HostInput* host_input = host_input_;
+    HostConfiguration* host_configuration = host_configuration_;
     HostPlatformCompat* host_compat = host_compat_;
     // Core ranges never overlap (GLES 0-141, assets 142-159, windows 160-167, EGL 168-211,
     // append-only platform compatibility 212-227, sensors 344-375, JNI 0xFB00+), so the chain
     // order is free;
     // GL stays first because it is by far the hotter path during rendering.
     runtime_->set_host_call_handler([host_jni, host_gl, host_assets, host_windows, host_egl,
-                                     host_looper, host_sensors, host_input,
+                                     host_looper, host_sensors, host_input, host_configuration,
                                      host_compat](std::uint32_t index, GuestThread& thread) {
         if (host_gl != nullptr && host_gl->handle_host_call(index, thread)) return true;
         if (host_assets != nullptr && host_assets->handle_host_call(index, thread)) return true;
@@ -386,6 +397,7 @@ GuestJniEngine::GuestJniEngine(JniBackend& backend, GlBackend* gl_backend, HostG
         if (host_looper->handle_host_call(index, thread)) return true;
         if (host_sensors->handle_host_call(index, thread)) return true;
         if (host_input != nullptr && host_input->handle_host_call(index, thread)) return true;
+        if (host_configuration != nullptr && host_configuration->handle_host_call(index, thread)) return true;
         if (host_compat->handle_host_call(index, thread)) return true;
         return host_jni->handle_host_call(index, thread);
     });
