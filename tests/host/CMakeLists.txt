@@ -14,6 +14,7 @@ set(ZB_HOST_TESTS
     jni_handles_test
     jni_mangle_test
     jni_shorty_test
+    native_activity_test
     native_thunk_test
     path_translation_test
     platform_compat_test

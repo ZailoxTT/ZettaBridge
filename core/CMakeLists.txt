@@ -1,6 +1,7 @@
 add_library(zbcore STATIC
     src/android/host_looper.cpp
     src/android/host_native_window.cpp
+    src/android/host_native_activity.cpp
     src/android/host_sensors.cpp
     src/android/host_platform_compat.cpp
     src/assets/host_assets.cpp
