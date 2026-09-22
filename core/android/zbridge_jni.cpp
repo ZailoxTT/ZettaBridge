@@ -138,6 +138,21 @@ JNIEXPORT jint JNICALL Java_com_zettabridge_core_ZBridge_onProxyLoaded(JNIEnv* e
     return JNI_ERR;
 }
 
+// static native boolean onNativeActivityCreated(long activity, long savedState, long size, String proxy)
+// Called by libzbproxy.so from ANativeActivity_onCreate. Never throws: the framework is in the
+// middle of creating an activity, and an exception here would surface somewhere unrelated. A
+// refusal is false, with the reason in the runtime report.
+JNIEXPORT jboolean JNICALL Java_com_zettabridge_core_ZBridge_onNativeActivityCreated(
+    JNIEnv* env, jclass, jlong activity, jlong saved_state, jlong saved_state_size, jstring proxy_path) {
+    const std::optional<std::string> path = to_string(env, proxy_path);
+    if (!path) return JNI_FALSE;
+    const bool ok = zb::GuestJniRuntime::get(env).proxies().on_native_activity_created(
+        to_env(env), static_cast<std::uint64_t>(activity), static_cast<std::uint64_t>(saved_state),
+        static_cast<std::uint64_t>(saved_state_size), *path);
+    if (env->ExceptionCheck()) env->ExceptionClear();
+    return ok ? JNI_TRUE : JNI_FALSE;
+}
+
 // static native String loadError(String proxyPath): the stored failure of that proxy, or null.
 JNIEXPORT jstring JNICALL Java_com_zettabridge_core_ZBridge_loadError(JNIEnv* env, jclass, jstring proxy_path) {
     const std::optional<std::string> path = to_string(env, proxy_path);

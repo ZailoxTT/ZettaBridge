@@ -112,6 +112,12 @@ public:
     ProxyLoadResult on_proxy_loaded(JniBackend::Env env, const std::string& proxy_path);
 
     // The stored failure of a proxy path (canonical or as passed), or nullopt.
+    // The framework created a NativeActivity whose library is this proxy. Builds the guest
+    // activity and calls the guest ANativeActivity_onCreate; false means the reason is in the
+    // report and the framework's activity was left untouched.
+    bool on_native_activity_created(JniBackend::Env env, std::uint64_t activity, std::uint64_t saved_state,
+                                    std::uint64_t saved_state_size, const std::string& proxy_path);
+
     std::optional<std::string> load_error(const std::string& proxy_path) const;
     // The most recent failure of any proxy, or nullopt.
     std::optional<std::string> last_load_error() const;

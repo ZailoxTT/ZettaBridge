@@ -64,6 +64,21 @@ public final class ZBridge {
      */
     public static native int onProxyLoaded(String proxyPath);
 
+    /**
+     * Called by libzbproxy.so from ANativeActivity_onCreate, which is what the framework's
+     * android.app.NativeActivity looks up in the library the manifest names. Builds the 32-bit
+     * activity the guest sees and calls the guest's own ANativeActivity_onCreate.
+     *
+     * @param activity the host ANativeActivity* the framework passed, as a pointer value
+     * @param savedState the saved-state block, or 0
+     * @param savedStateSize its size in bytes
+     * @param proxyPath the proxy library the framework loaded, which names the arm32 library
+     * @return true when the guest activity is built and its callbacks are installed; false leaves
+     *     the framework's activity untouched, and the reason is in the runtime report
+     */
+    public static native boolean onNativeActivityCreated(long activity, long savedState, long savedStateSize,
+                                                         String proxyPath);
+
     /** The stored failure message for a proxy path, or null if it did not fail. */
     public static native String loadError(String proxyPath);
 

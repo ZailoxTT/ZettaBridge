@@ -292,6 +292,23 @@ ProxyLoadResult ProxyRuntime::on_proxy_loaded(JniBackend::Env env, const std::st
     return {true, report.jni_version, {}};
 }
 
+bool ProxyRuntime::on_native_activity_created(JniBackend::Env env, std::uint64_t activity,
+                                              std::uint64_t saved_state, std::uint64_t saved_state_size,
+                                              const std::string& proxy_path) {
+    (void)env;
+    (void)saved_state;
+    (void)saved_state_size;
+    // Task 1 records the arrival; building the guest activity is Task 2. Until then the framework
+    // keeps an activity with no guest behind it, which is what it had before, and the report says
+    // so instead of the guest dying with an unexplained UnsatisfiedLinkError.
+    char detail[160];
+    std::snprintf(detail, sizeof detail, "%s host activity 0x%llx: guest activity not built yet",
+                  base_name(proxy_path).c_str(), static_cast<unsigned long long>(activity));
+    runtime_report().note_jni_detail("native-activity", detail, true);
+    log("ZBridge.onNativeActivityCreated: %s", detail);
+    return false;
+}
+
 std::optional<std::string> ProxyRuntime::load_error(const std::string& proxy_path) const {
     std::string canonical, error;
     const std::string key = canonical_path(proxy_path, canonical, error) ? canonical : proxy_path;

@@ -36,6 +36,7 @@ struct Fake {
     int new_string_fails;
     int call_throws;
     jint call_result;
+    jboolean boolean_result;
 
     // Observations.
     jint getenv_version;
@@ -45,6 +46,10 @@ struct Fake {
     int method_calls;
     int new_string_calls;
     int static_int_calls;
+    int static_boolean_calls;
+    jlong activity;
+    jlong saved_state;
+    jlong saved_state_size;
     int deleted_unknown;
     int live_refs;
     int ref_live[kMaxRefs];
@@ -138,6 +143,23 @@ static jint JNICALL fake_call_static_int_method(JNIEnv* env, jclass cls, jmethod
     return fake.call_result;
 }
 
+static jboolean JNICALL fake_call_static_boolean_method(JNIEnv* env, jclass cls, jmethodID method, ...) {
+    (void)env;
+    note_call();
+    ++fake.static_boolean_calls;
+    va_list args;
+    va_start(args, method);
+    fake.activity = va_arg(args, jlong);
+    fake.saved_state = va_arg(args, jlong);
+    fake.saved_state_size = va_arg(args, jlong);
+    fake.call_arg = va_arg(args, jstring);
+    va_end(args);
+    fake.call_class = cls;
+    fake.call_method = method;
+    if (fake.call_throws) fake.exception_pending = 1;
+    return fake.boolean_result;
+}
+
 static void JNICALL fake_delete_local_ref(JNIEnv* env, jobject ref) {
     (void)env;
     if (ref == NULL) return;
@@ -179,6 +201,8 @@ static const struct JNIInvokeInterface_* vm_ptr = &vm_table;
 
 typedef jint (*OnLoadFn)(JavaVM*, void*);
 static OnLoadFn on_load;
+typedef void (*OnCreateFn)(void*, void*, size_t);
+static OnCreateFn on_create;
 static const char* proxy_path;
 
 static void reset(const char* name) {
@@ -306,6 +330,51 @@ static void test_new_string_fails(void) {
     check_clean();
 }
 
+// ANativeActivity_onCreate is the one export android.app.NativeActivity looks for. It arrives
+// with no JavaVM of its own, so the proxy must have kept the one JNI_OnLoad was given.
+static void test_native_activity(void) {
+    reset("ANativeActivity_onCreate before JNI_OnLoad is impossible here (JNI_OnLoad already ran)");
+    fake.call_result = JNI_VERSION_1_6;
+    CHECK(run() == JNI_VERSION_1_6);
+
+    reset("native activity accepted");
+    fake.boolean_result = JNI_TRUE;
+    on_create((void*)0x1234, (void*)0x5678, 9);
+    CHECK(fake.getenv_version == JNI_VERSION_1_6);
+    CHECK(strcmp(fake.class_name, "com/zettabridge/core/ZBridge") == 0);
+    CHECK(strcmp(fake.method_name, "onNativeActivityCreated") == 0);
+    CHECK(strcmp(fake.method_sig, "(JJJLjava/lang/String;)Z") == 0);
+    CHECK(fake.static_boolean_calls == 1);
+    CHECK(fake.activity == 0x1234 && fake.saved_state == 0x5678 && fake.saved_state_size == 9);
+    CHECK(strcmp(fake.string_value, proxy_path) == 0);
+    CHECK(fake.live_refs == 0 && fake.violations == 0);
+
+    // A refusal is reported, not thrown: the framework then fails the activity its own way.
+    reset("native activity refused");
+    fake.boolean_result = JNI_FALSE;
+    on_create((void*)0x1000, NULL, 0);
+    CHECK(fake.static_boolean_calls == 1 && fake.live_refs == 0 && !fake.exception_pending);
+
+    // An exception from the bridge is cleared here; leaving it pending would surface at an
+    // unrelated JNI call much later.
+    reset("native activity throws");
+    fake.call_throws = 1;
+    on_create((void*)0x1000, NULL, 0);
+    CHECK(fake.static_boolean_calls == 1 && !fake.exception_pending);
+    CHECK(fake.live_refs == 0 && fake.violations == 0);
+
+    reset("native activity with GetEnv failing");
+    fake.getenv_fails = 1;
+    on_create((void*)0x1000, NULL, 0);
+    CHECK(fake.static_boolean_calls == 0 && fake.find_class_calls == 0);
+
+    reset("native activity with an exception already pending");
+    fake.pending_on_entry = 1;
+    fake.exception_pending = 1;
+    on_create((void*)0x1000, NULL, 0);
+    CHECK(fake.find_class_calls == 0 && fake.static_boolean_calls == 0);
+}
+
 int main(int argc, char** argv) {
     if (argc != 2 || argv[1][0] != '/') {
         fprintf(stderr, "usage: %s /absolute/path/to/proxy.so\n", argv[0]);
@@ -317,6 +386,7 @@ int main(int argc, char** argv) {
     env_table.GetStaticMethodID = fake_get_static_method_id;
     env_table.NewStringUTF = fake_new_string_utf;
     env_table.CallStaticIntMethod = fake_call_static_int_method;
+    env_table.CallStaticBooleanMethod = fake_call_static_boolean_method;
     env_table.DeleteLocalRef = fake_delete_local_ref;
     env_table.ExceptionCheck = fake_exception_check;
     env_table.ExceptionClear = fake_exception_clear;
@@ -329,6 +399,8 @@ int main(int argc, char** argv) {
     }
     on_load = (OnLoadFn)dlsym(handle, "JNI_OnLoad");
     CHECK(on_load != NULL);
+    on_create = (OnCreateFn)dlsym(handle, "ANativeActivity_onCreate");
+    CHECK(on_create != NULL);
 
     test_success_versions();
     test_unsupported_versions();
@@ -338,6 +410,7 @@ int main(int argc, char** argv) {
     test_find_class_fails();
     test_method_fails();
     test_new_string_fails();
+    test_native_activity();
 
     printf("zbproxy fake JNI: all cases passed\n");
     return 0;
