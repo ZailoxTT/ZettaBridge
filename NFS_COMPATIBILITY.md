@@ -22,6 +22,26 @@ ZettaBridge ran; its evidence remains below as a separate historical attempt.
 See [device evidence](docs/nfs-device-evidence.md) for the gate results and
 local artifact inventory.
 
+**Latest status (2026-09-28):** The reproduced garage crash was a guest
+callback storing through a null object at `libapp.so+0x473a50`. A narrow guard
+was added for the exact affected `libapp.so` build; it skips the callback when
+its payload object is null or below address `0x10000`, and leaves normal object
+pointers on the original path. The guard was hot-applied to the installed
+game's extracted library with a verified rollback copy. During a roughly
+three-minute user-led garage session with repeated car browsing, the process
+stayed alive and the user could not reproduce the crash. The converter now
+applies the guard only to the matching library hash, and a converted,
+verified APK was produced with the selected default Android debug key. Its
+certificate differed from the previous install, so after a verified backup
+the old package was removed and the rebuilt APK installed. App-private and
+device-protected data, app-specific external files, and the OBB were restored
+under the new UID; the OBB hash matched. Android Keystore state was not backed
+up, so keystore-backed game state may not have survived. The new process loaded
+all five guest libraries without proxy or unimplemented-host-call errors and
+stayed alive for about five minutes while the logs showed car-model loading.
+The upstream cause of the invalid callback remains unknown, and longer-play
+stability remains unverified. Gate 4 remains open.
+
 ## Goal and scope
 
 Convert a legally obtained, matching APK and expansion file into an installed

@@ -15,6 +15,7 @@ import subprocess
 import sys
 import tempfile
 import zipfile
+import struct
 
 import apk_preflight as pre
 from axml_inject import inject, bootstrap_processes, bootstrap_class, MAX_BOOTSTRAP_PROCESSES
@@ -26,6 +27,91 @@ BRIDGE_CLASS = b"Lcom/zettabridge/core/ZBridge;"
 SIGNATURE_FILE = re.compile(r"^META-INF/(?:[^/]+\.(?:RSA|DSA|EC|SF|MF)|SIG-[^/]+)$", re.I)
 DEX_NAME = re.compile(r"classes(?:([2-9][0-9]*))?\.dex$")
 LIB_NAME = re.compile(r"lib[A-Za-z0-9_+.\-]+\.so$")
+
+
+# This workaround is pinned to the exact NFS Most Wanted 1.3.128 ARM32
+# library that reproduced the garage callback fault. Review changed binaries.
+NFS_PACKAGE = "com.ea.games.nfs13_row"
+NFS_LIB_NAME = "libapp.so"
+NFS_LIB_SHA256 = "a73dcc170552866af52bf2d4f5822606307fb42aed1ef0df2e469fdfa374ff43"
+NFS_GUARDED_LIB_SHA256 = "6aab56c18280e7b11634f6fa0edb12c09be67a35ff9066017781692f3de3801f"
+NFS_CALLBACK_OFFSET = 0x473A3C
+NFS_CALLBACK_EXPECTED = bytes.fromhex("f0 4b 2d e9")
+NFS_GUARD_CAVE_OFFSET = 0x90D8D8
+NFS_GUARD_CODE = bytes.fromhex(
+    "00 00 50 e3"  # cmp r0, #0
+    "1e ff 2f 01"  # bxeq lr
+    "00 20 90 e5"  # ldr r2, [r0]
+    "01 08 52 e3"  # cmp r2, #0x10000
+    "1e ff 2f 31"  # bxlo lr
+    "f0 4b 2d e9"  # push {r4-r9, r11, lr}
+    "18 b0 8d e2"  # add r11, sp, #24
+    "00 40 a0 e1"  # mov r4, r0
+    "00 00 90 e5"  # ldr r0, [r0]
+    "00 10 a0 e3"  # mov r1, #0
+    "30 10 80 e5"  # str r1, [r0, #0x30]
+    "00 00 00 00"  # replaced with a branch to the original continuation
+)
+
+
+def patch_known_guest(package, name, data):
+    """Guard the observed callback only in its exact known game library."""
+    if package != NFS_PACKAGE or name != NFS_LIB_NAME:
+        return data, None
+
+    input_sha256 = digest(data)
+    if input_sha256 == NFS_GUARDED_LIB_SHA256:
+        return data, {
+            "id": "nfs13-garage-low-pointer-callback-guard-v1",
+            "library": name,
+            "input_sha256": input_sha256,
+            "output_sha256": input_sha256,
+            "status": "already_applied",
+            "callback_offset": NFS_CALLBACK_OFFSET,
+            "guard_offset": NFS_GUARD_CAVE_OFFSET,
+        }
+    if input_sha256 != NFS_LIB_SHA256:
+        raise pre.Invalid(
+            "NFS garage callback guard is pinned to libapp.so SHA-256 "
+            f"{NFS_LIB_SHA256}; found {input_sha256}. Review the new game "
+            "binary before converting it with this fix."
+        )
+    if data[NFS_CALLBACK_OFFSET:NFS_CALLBACK_OFFSET + 4] != NFS_CALLBACK_EXPECTED:
+        raise pre.Invalid("NFS callback prologue does not match the known library")
+    cave_end = NFS_GUARD_CAVE_OFFSET + len(NFS_GUARD_CODE)
+    if cave_end > len(data) or any(data[NFS_GUARD_CAVE_OFFSET:cave_end]):
+        raise pre.Invalid("NFS callback guard code cave is not empty in the known library")
+
+    # ARM B uses a signed PC-relative immediate; PC is instruction address + 8.
+    return_offset = NFS_GUARD_CAVE_OFFSET + len(NFS_GUARD_CODE) - 4
+    return_target = NFS_CALLBACK_OFFSET + 0x18
+    branch_delta = return_target - (return_offset + 8)
+    if branch_delta % 4:
+        raise pre.Invalid("NFS callback continuation is not ARM-aligned")
+    guard_branch = 0xEA000000 | ((branch_delta // 4) & 0x00FFFFFF)
+    guard = NFS_GUARD_CODE[:-4] + struct.pack("<I", guard_branch)
+
+    branch_delta = NFS_GUARD_CAVE_OFFSET - (NFS_CALLBACK_OFFSET + 8)
+    if branch_delta % 4:
+        raise pre.Invalid("NFS callback trampoline is not ARM-aligned")
+    trampoline_branch = 0xEA000000 | ((branch_delta // 4) & 0x00FFFFFF)
+    patched = bytearray(data)
+    patched[NFS_CALLBACK_OFFSET:NFS_CALLBACK_OFFSET + 4] = struct.pack("<I", trampoline_branch)
+    patched[NFS_GUARD_CAVE_OFFSET:cave_end] = guard
+    patched = bytes(patched)
+    output_sha256 = digest(patched)
+    if output_sha256 != NFS_GUARDED_LIB_SHA256:
+        raise pre.Invalid("NFS callback guard bytes failed their pinned output hash")
+    return patched, {
+        "id": "nfs13-garage-low-pointer-callback-guard-v1",
+        "library": name,
+        "input_sha256": input_sha256,
+        "output_sha256": output_sha256,
+        "status": "applied",
+        "callback_offset": NFS_CALLBACK_OFFSET,
+        "guard_offset": NFS_GUARD_CAVE_OFFSET,
+        "invalid_object_threshold": 65536,
+    }
 
 
 def digest(data):
@@ -400,12 +486,21 @@ def convert(args):
                                      args.zbridge, args.readelf)
         guest = {}
         mapping = []
+        guest_patches = []
         for name, (rank, i, lib) in sorted(chosen.items()):
             with zipfile.ZipFile(staged[i][0]) as source:
                 data = source.read(lib["path"])
+            source_sha256 = digest(data)
+            data, patch = patch_known_guest(report["package"], name, data)
             guest[name] = data
             mapping.append({"guest": name, "source": staged[i][1], "entry": lib["path"],
-                            "sha256": digest(data), "abi": lib["abi"]})
+                            "sha256": source_sha256, "runtime_sha256": digest(data),
+                            "abi": lib["abi"]})
+            if patch:
+                guest_patches.append(patch)
+        if report["package"] == NFS_PACKAGE and not any(
+                item["guest"] == NFS_LIB_NAME for item in mapping):
+            raise pre.Invalid("NFS Most Wanted input has no selected ARM32 libapp.so")
         if sum(map(len, runtime.values())) + sum(map(len, guest.values())) > pre.MAX_TOTAL:
             raise pre.Invalid("runtime plus guest assets exceed 512 MiB")
         output_paths = []
@@ -419,6 +514,9 @@ def convert(args):
                                   selected_paths={lib["path"] for _, source_i, lib in chosen.values()
                                                   if source_i == i}, runtime=runtime, dex=dex,
                                   proxy=args.proxy.read_bytes(), bridge=args.zbridge.read_bytes())
+            if i == base_idx:
+                edits.extend({"kind": "patch_guest_library", **patch}
+                             for patch in guest_patches)
             run([args.zipalign, "-f", "4", str(unsigned), str(aligned)])
             run([args.apksigner, "sign", "--ks", str(key), "--ks-type", "PKCS12",
                  "--ks-key-alias", "zettabridge", "--ks-pass", "env:ZB_KEY_PASS",
@@ -444,6 +542,7 @@ def convert(args):
         record = {"schema": 1, "package": report["package"], "version_code": report["version_code"],
                   "source_signer_sha256": report["files"][base_idx]["signer"]["cert_sha256"],
                   "output_signer_sha256": signer_fp, "guest_mapping": mapping,
+                  "guest_patches": guest_patches,
                   "runtime_assets_sha256": {name: digest(data) for name, data in sorted(runtime.items())},
                   "bootstrap_apk_sha256": file_hash(args.bootstrap_apk),
                   "proxy_sha256": file_hash(args.proxy), "zbridge_sha256": file_hash(args.zbridge),

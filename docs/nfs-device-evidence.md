@@ -96,9 +96,121 @@ the same PID `20342`; logcat recorded `onRestart`, `onStart`, `onResume`, and
 rendering. A force-stop and fresh launcher start created PID `21163`, whose
 report showed five proxy loads, zero proxy failures, successful `libapp.so`
 `JNI_OnLoad`, and no guest exit at capture time. The saved game survived both
-package updates and the cold process launch. The original one-time locked-car
-crash remains an open, non-reproduced limitation; no speculative game or
-resource workaround was applied.
+package updates and the cold process launch. At that point the locked-car
+crash had not reproduced in the precise diagnostic or normal-speed retest, so
+its cause remained open and no speculative game or resource workaround was
+applied.
+
+## 2026-09-28 precise garage-crash reproduction
+
+After the user reported another garage crash, the same-signer diagnostic APK
+`play-phone/converted-precise/base.apk` was installed with `adb install -r`.
+It is version `1003128`/`1.3.128`, signed by the existing personal certificate
+`d3fe5a914ad2f4139c645ae3a09ba845d484b2f946a50826326beb41d5575c00`. No app
+data or OBB was cleared. The user reproduced the crash while browsing cars.
+
+PID `22765` exited at `14:33:33.847` with status `139`. Its runtime report says
+`crash-precise: yes`, guest `SIGSEGV: write of 0x00000030`, `libapp.so` offset
+`0x473a50`, and LR offset `0x4684b4`. ARM32 disassembly at the fault is:
+
+```text
+0x473a44  mov r4, r0
+0x473a48  ldr r0, [r0]
+0x473a4c  mov r1, #0
+0x473a50  str r1, [r0, #0x30]
+```
+
+The captured registers show `r0=0` at the store, so this instruction writes to
+address `0x30`. The return address follows this indirect callback invocation
+in the guest library:
+
+```text
+0x4684a8  ldr r1, [r6, #0x4]
+0x4684ac  add r0, r6, #8
+0x4684b0  blx r1
+0x4684b4  ldr r0, [r6]
+```
+
+Logcat shows car model and texture loads during browsing.
+The report records successful proxy loads and JNI initialization, zero
+unimplemented host calls, and no GLES/EGL error. This is a confirmed guest-side
+null dereference; why the callback object's field is null remains unknown, so
+the evidence does not justify a general converter/runtime patch or a
+game-specific binary guard. No code workaround was applied.
+
+After collecting the trace, the normal-speed timer-fixed APK was reinstalled
+with `adb install -r`: SHA-256
+`8d230e277aa206e14e41b9eebc320714d259700b774dc105970bab0509256301`, package
+version `1003128`/`1.3.128`, same personal signer, and `primaryCpuAbi=arm64-v8a`.
+The diagnostic and normal updates did not clear app data or OBB files. Local
+artifacts `pixel-runtime-22765-precise.txt` and
+`pixel-precise-garage-crash.log` contain the report and filtered device log.
+
+## 2026-09-28 garage callback guard
+
+The exact guest binary from `NFS-Play-base.apk` is SHA-256
+`a73dcc170552866af52bf2d4f5822606307fb42aed1ef0df2e469fdfa374ff43`.
+The faulting callback begins at `libapp.so+0x473a3c`; its first instruction is
+the function prologue, followed by the object-field store that faulted at
+`+0x473a50`. A 48-byte zero-filled executable code cave at `+0x90d8d8` was
+used for a trampoline. It returns from the callback when its payload is null
+or the payload's first pointer is below `0x10000`; otherwise it replays the
+original prologue and field store, then resumes at `+0x473a54`. The output
+library SHA-256 is `6aab56c18280e7b11634f6fa0edb12c09be67a35ff9066017781692f3de3801f`.
+
+The original extracted library was backed up at
+`/data/local/tmp/zb-nfs-libapp-original-backup.so` and matched its local
+original hash. The guard was copied into the existing app-private extracted
+library as UID/GID `10402`, mode `0400`, with its `app_data_file` SELinux
+label. No APK install, app-data clear, or OBB edit was performed. The existing
+bundle version marker remained `elf-fixups-v1:96ceb6ac88880ebe9bcb4a97660584561b55edc59b777c771c5af3f4626b21f2`, so the runtime reused the guarded file after restart.
+
+PID `27153` launched at `15:47:46` and remained alive past `15:50:50` while
+the user repeatedly browsed cars in the garage; the user reported being
+unable to reproduce the crash. Live logs showed the garage and multiple car
+models and textures loading. This is a successful short gameplay observation,
+not a guarantee against later crashes. Logs also recorded `mmap/mremap failed
+to allocate 8192 bytes` warnings, which did not terminate this process and
+remain a separate memory-pressure lead. The invalid callback object's origin
+is still unknown; skipping that callback can affect resource cleanup or
+content behavior and needs longer play validation.
+
+`tools/apk_convert.py` now applies this guard only to package
+`com.ea.games.nfs13_row` when the selected `libapp.so` matches the exact input
+hash above. It verifies the original prologue, empty code cave, branch output,
+and expected guarded-library hash, and rejects a changed NFS library pending
+review. Conversion report `play-phone/converted-guarded-20260928/transformation.json`
+records the patch and both hashes. The resulting base APK has SHA-256
+`8886d8b27d3355f36215223a3e97a72ac67be9213f67ec1da5d58bb97568a1fd` and was
+signed with the selected default debug certificate
+`fedb14111f633a0257e78c196e7cc18ecb75ff71638dbdbb15c9036f32439418`. The
+previous install used certificate
+`d3fe5a914ad2f4139c645ae3a09ba845d484b2f946a50826326beb41d5575c00`, so
+Android would not accept the new APK as an in-place update. With the user's
+reinstall instruction, a root-created backup of private data, device-protected
+data, app-specific external files, and OBB was made before uninstall. The
+local archive `play-phone/reinstall-backup-20260928/nfs-reinstall-backup.tar`
+is 650,559,488 bytes with SHA-256
+`28239ddab90948490bea52fea1f7ef038027e726e3067b34d8b63bcb6b68a8a0`; its
+contents were checked before uninstall. Android Keystore material was not
+included, so saves encrypted with app-bound Keystore keys may not be usable.
+
+The rebuilt base APK installed successfully with version `1003128`,
+`primaryCpuAbi=arm64-v8a`, and the default debug certificate above. App data
+was restored under the new UID `10403`, with its SELinux MCS labels updated;
+app-specific external data and OBB ownership were also updated. The restored
+OBB hash `66dd4e695e698929f789e7c825eabe3ba5a50ed2ce28b628c96e5dbc008043a1`
+matches the local OBB. The extracted `libapp.so` still has the guarded hash
+above.
+
+The new game process, PID `4706`, resumed `GameActivityMain`. Its runtime
+report recorded five guest libraries loaded, zero proxy failures, zero
+unimplemented host calls, and no first GLES/EGL error. The process remained
+alive through at least `16:23:49`, with logs showing garage car-model loads
+including the Lamborghini Countach; no new crash-buffer event or process exit
+was recorded during that observation. This supports the guard on the
+reinstalled package, though the upstream invalid-callback source and
+longer-play stability remain unknown.
 
 Local-only artifacts: `C:\Users\Netanel\Documents\Codex\nfs-compat-20260926\play-phone`
 contains original APK/OBB, preflight, both conversion reports and outputs,

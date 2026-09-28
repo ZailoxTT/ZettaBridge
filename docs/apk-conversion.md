@@ -49,6 +49,16 @@ certificate fingerprints, per-library ABI/path/hash mapping, runtime hashes,
 and every manifest edit. Resources and original DEX bytes are retained and
 checked. Package name and version are unchanged.
 
+For `com.ea.games.nfs13_row`, conversion also applies the narrowly scoped
+`nfs13-garage-low-pointer-callback-guard-v1` patch when selected `libapp.so`
+matches the pinned NFS Most Wanted 1.3.128 ARM32 library hash. It skips the
+observed callback for a null or below-64-KiB object pointer and preserves the
+original path for other pointers. A changed NFS library hash is rejected for
+review rather than silently converted without the guard. The report records
+the source and patched guest hashes and patch offsets under `guest_patches`.
+This game-specific workaround does not establish why the invalid callback
+object was produced.
+
 The converter copies the inputs into a private staging directory, runs preflight,
 edits compiled binary AXML, moves selected ARM32 ELFs into `assets/zb/app/lib`,
 adds the ARM64 bridge/proxies and bootstrap DEX, aligns, signs, then verifies
