@@ -135,6 +135,16 @@ The project is young. The most useful contributions right now are issues that na
 old 32-bit apps you want to run. Include the app name and version, where the APK comes
 from, and what happens.
 
+## Thanks
+
+- **[@kxiserino](https://github.com/kxiserino)**, whose `fix/unity-startup` branch and its
+  write-up mapped the Unity startup chain on real hardware: the missing sensor ABI, the IL2CPP
+  path mapping, the Boehm collector's stop-the-world handshake and the extension list an Adreno
+  driver advertises. The work here is independent, but the findings shortened it considerably,
+  and the branch named its limits as carefully as its results.
+- Everyone who starred the repository or supported it on Boosty in its first weeks. A project
+  like this one is a long stretch of black screens; knowing someone is waiting for it helps.
+
 ## License
 
 ZettaBridge is **source-available, not open source**. Two licences apply cumulatively (see
