@@ -1466,3 +1466,11 @@ AConfiguration_setUiModeType:
     svc #0x5a01ea
     bx lr
 .size AConfiguration_setUiModeType, . - AConfiguration_setUiModeType
+
+.global ALooper_pollAll
+.type ALooper_pollAll, %function
+.p2align 2
+ALooper_pollAll:
+    svc #0x5a01eb
+    bx lr
+.size ALooper_pollAll, . - ALooper_pollAll

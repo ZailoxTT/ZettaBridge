@@ -178,6 +178,17 @@ def input_names():
     return sorted(names)
 
 
+def gles1_names():
+    """Every GLES 1.1 entry point of the NDK header.
+
+    Unity 4.5 links libGLESv1_CM.so even when it renders through GLES 2, and a library that is
+    not there stops the whole guest from loading. The stubs exist so the load succeeds; a guest
+    that really calls one lands in the report as an unimplemented host call, by name.
+    """
+    text = open(os.path.join(INCLUDE, "GLES", "gl.h")).read()
+    return sorted(set(re.findall(r"^GL_API\w*\s+\w[\w \*]*\bGL_APIENTRY\s+(gl\w+)\s*\(", text, re.M)))
+
+
 def looper_pollall_names():
     """ALooper_pollAll, appended late because it turned up in a real guest after the rest.
 
@@ -222,6 +233,8 @@ LIBRARIES = [
     ("libandroid", configuration_names),
     # ALooper_pollAll, last: Unity 4.5 imports it and nothing else here does.
     ("libandroid", looper_pollall_names),
+    # GLES 1.1: linked by Unity 4.5, so the library has to exist for the guest to load at all.
+    ("libGLESv1_CM", gles1_names),
 ]
 
 
