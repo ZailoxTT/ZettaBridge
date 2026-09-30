@@ -28,6 +28,12 @@ public:
     // unimplemented AAsset* stubs in the 142-160 range).
     bool handle_host_call(std::uint32_t index, GuestThread& thread);
 
+    // A guest handle for an AAssetManager the platform handed us directly (the one inside the
+    // framework's ANativeActivity), so the guest activity can carry it like any other.
+    std::uint32_t handle_for_manager(std::uint64_t manager) {
+        return manager == 0 ? 0 : managers_.add(manager);
+    }
+
     // The host AAssetManager behind a guest handle, or 0. HostConfiguration needs it for
     // AConfiguration_fromAssetManager, which takes the manager the guest already holds.
     std::uint64_t manager_for(std::uint32_t handle) const { return require_manager(handle); }

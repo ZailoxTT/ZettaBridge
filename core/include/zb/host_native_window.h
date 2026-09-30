@@ -29,6 +29,10 @@ public:
     // Serves ZB_WINDOW_HC_* indices (160-167); returns false for any other index.
     bool handle_host_call(std::uint32_t index, GuestThread& thread);
 
+    // A guest handle for a window the platform handed us directly (the one the framework gives a
+    // NativeActivity), so the guest callback can receive it like any other window.
+    std::uint32_t handle_for_window(const void* window);
+
     // The WindowResolver seam HostEgl::eglCreateWindowSurface uses to turn a guest window handle
     // into a host ANativeWindow*; nullptr for an unknown handle.
     const void* value_for(std::uint32_t handle) const;

@@ -230,7 +230,7 @@ ProxyLoadResult ProxyRuntime::on_proxy_loaded(JniBackend::Env env, const std::st
         cv_.wait(lock);
     }
     if (!resolved) return fail_locked(key, base_name(proxy_path), error);
-    entries_[key] = Entry{LoadState::Loading, std::this_thread::get_id(), 0, {}};
+    entries_[key] = Entry{LoadState::Loading, std::this_thread::get_id(), 0, 0, {}};
 
     ProxyLocation location;
     if (!parse_proxy_path(canonical, location, error)) return fail_locked(key, base_name(key), error);
@@ -284,6 +284,7 @@ ProxyLoadResult ProxyRuntime::on_proxy_loaded(JniBackend::Env env, const std::st
     Entry& entry = entries_[key];
     entry.state = LoadState::Loaded;
     entry.jni_version = report.jni_version;
+    entry.guest_handle = report.guest_handle;
     log("guest JNI library %s loaded: %zu natives bound, %zu classes skipped, JNI version %s",
         location.guest_library.c_str(), report.bound_methods, report.skipped_classes,
         hex_version(report.jni_version).c_str());
@@ -295,17 +296,33 @@ ProxyLoadResult ProxyRuntime::on_proxy_loaded(JniBackend::Env env, const std::st
 bool ProxyRuntime::on_native_activity_created(JniBackend::Env env, std::uint64_t activity,
                                               std::uint64_t saved_state, std::uint64_t saved_state_size,
                                               const std::string& proxy_path) {
-    (void)env;
-    (void)saved_state;
-    (void)saved_state_size;
-    // Task 1 records the arrival; building the guest activity is Task 2. Until then the framework
-    // keeps an activity with no guest behind it, which is what it had before, and the report says
-    // so instead of the guest dying with an unexplained UnsatisfiedLinkError.
-    char detail[160];
-    std::snprintf(detail, sizeof detail, "%s host activity 0x%llx: guest activity not built yet",
-                  base_name(proxy_path).c_str(), static_cast<unsigned long long>(activity));
-    runtime_report().note_jni_detail("native-activity", detail, true);
-    log("ZBridge.onNativeActivityCreated: %s", detail);
+    const std::string library = base_name(proxy_path);
+    std::string error;
+    std::uint32_t guest_library = 0;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        std::string canonical;
+        if (!canonical_path(proxy_path, canonical, error)) {
+            canonical = proxy_path;
+        }
+        const auto entry = entries_.find(canonical);
+        if (entry == entries_.end() || entry->second.state != LoadState::Loaded) {
+            error = "the library of this activity was never loaded through its proxy";
+        } else {
+            guest_library = entry->second.guest_handle;
+        }
+    }
+    if (guest_library != 0) {
+        if (engine_.create_native_activity(env, activity, reinterpret_cast<const void*>(
+                                               static_cast<std::uintptr_t>(saved_state)),
+                                           static_cast<std::size_t>(saved_state_size), guest_library, error)) {
+            runtime_report().note_jni_detail("native-activity", library + ": running", true);
+            log("guest NativeActivity of %s is running", library.c_str());
+            return true;
+        }
+    }
+    runtime_report().note_jni_detail("native-activity", library + ": " + error, true);
+    log("ZBridge.onNativeActivityCreated(%s): %s", library.c_str(), error.c_str());
     return false;
 }
 
@@ -341,6 +358,33 @@ GuestJniEngine::GuestJniEngine(JniBackend& backend, GlBackend* gl_backend, HostG
     };
     host_looper_ = new HostLooper(*runtime_, looper_backend, std::move(looper_invoker));
     host_sensors_ = new HostSensors(*runtime_);
+    {
+        HostJni* jni_for_activity = host_jni_;
+        LibraryRuntime* runtime = runtime_;
+        host_native_activity_ = new HostNativeActivity(
+            *runtime_,
+            // A lifecycle callback is native code called from Java, so it goes through the same
+            // transition as any bound native method: a local frame on this thread's carrier.
+            [jni_for_activity](std::uint32_t function, const GuestCall& args) -> std::optional<std::uint32_t> {
+                const auto result = jni_for_activity->call_native(
+                    jni_for_activity->current_env(), 'I', function,
+                    [&args](std::uint32_t, const RefToHandle&) { return args; });
+                if (!result) return std::nullopt;
+                return result->guest.r0;
+            },
+            [runtime](std::size_t size) -> std::optional<std::uint32_t> {
+                GuestCall call;
+                call.regs = {static_cast<std::uint32_t>(size), 0, 0, 0};
+                const auto result = runtime->call_on_current(runtime->service_api().malloc_fn, call);
+                if (!result || result->r0 == 0) return std::nullopt;
+                return result->r0;
+            },
+            [runtime](std::uint32_t address) {
+                GuestCall call;
+                call.regs = {address, 0, 0, 0};
+                runtime->call_on_current(runtime->service_api().free_fn, call);
+            });
+    }
     if (configuration_backend != nullptr) {
         HostAssets* assets = host_assets_;
         host_configuration_ = new HostConfiguration(*runtime_, *configuration_backend,
@@ -420,6 +464,43 @@ bool GuestJniEngine::start(const LibraryRuntimeOptions& options, std::string& er
     }
     // Process-lifetime, like the runtime itself: no shutdown path, started once.
     start_hang_watchdog();
+    return true;
+}
+
+bool GuestJniEngine::create_native_activity(JniBackend::Env env, std::uint64_t activity, const void* saved_state,
+                                            std::size_t saved_state_size, std::uint32_t guest_library,
+                                            std::string& error) {
+    if (host_native_activity_ == nullptr || native_activity_platform_ == nullptr) {
+        error = "this build has no NativeActivity support";
+        return false;
+    }
+    NativeActivityPlatform::Facts facts;
+    if (!native_activity_platform_->read(activity, facts)) {
+        error = "the framework activity could not be read";
+        return false;
+    }
+
+    HostNativeActivity::Description description;
+    description.guest_on_create = host_jni_->find_symbol_on_current(env, guest_library,
+                                                                    "ANativeActivity_onCreate", error);
+    if (description.guest_on_create == 0) {
+        error = "the guest library exports no ANativeActivity_onCreate: " + error;
+        return false;
+    }
+    description.guest_vm = host_jni_->guest_java_vm();
+    // The activity object is held for the life of the activity: the guest keeps the jobject in
+    // its own structure and calls Java through it long after this returns.
+    description.activity_handle = host_jni_->new_local_handle(backend_.new_global_ref(env, facts.activity_object));
+    description.asset_manager =
+        host_assets_ != nullptr ? host_assets_->handle_for_manager(facts.asset_manager) : 0;
+    description.sdk_version = facts.sdk_version;
+    description.internal_data_path = facts.internal_data_path;
+    description.external_data_path = facts.external_data_path;
+    description.obb_path = facts.obb_path;
+
+    const auto guest = host_native_activity_->create(description, saved_state, saved_state_size, error);
+    if (!guest) return false;
+    native_activity_platform_->attach(activity, *guest);
     return true;
 }
 

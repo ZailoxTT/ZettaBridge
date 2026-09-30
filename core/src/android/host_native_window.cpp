@@ -29,6 +29,14 @@ const void* HostNativeWindow::require_window(std::uint32_t handle) const {
     return value_for(handle);
 }
 
+std::uint32_t HostNativeWindow::handle_for_window(const void* window) {
+    if (window == nullptr) return 0;
+    const std::uint32_t handle = windows_.add(from_pointer(window));
+    std::lock_guard<std::mutex> lock(surfaces_mutex_);
+    references_[handle] = 1;
+    return handle;
+}
+
 bool HostNativeWindow::handle_host_call(std::uint32_t index, GuestThread& thread) {
     auto& regs = thread.regs();
     switch (index) {

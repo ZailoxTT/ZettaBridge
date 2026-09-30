@@ -17,6 +17,8 @@
 #include "zb/host_gl.h"
 #include "zb/host_looper.h"
 #include "zb/host_configuration.h"
+#include "zb/host_native_activity.h"
+#include "zb/native_activity_platform.h"
 #include "zb/host_input.h"
 #include "zb/host_sensors.h"
 #include "zb/host_native_window.h"
@@ -77,6 +79,21 @@ public:
     // Loads, binds and runs JNI_OnLoad on the calling thread. A failed load leaves no Java
     // exception pending.
     virtual JniLoadReport load(JniBackend::Env env, const std::string& guest_library) = 0;
+    // The framework created a NativeActivity whose library is `guest_library`. Builds the guest
+    // activity, calls the guest ANativeActivity_onCreate and puts our callbacks into the
+    // framework's table. Default: nothing, for an engine with no platform behind it.
+    virtual bool create_native_activity(JniBackend::Env env, std::uint64_t activity, const void* saved_state,
+                                        std::size_t saved_state_size, std::uint32_t guest_library,
+                                        std::string& error) {
+        (void)env;
+        (void)activity;
+        (void)saved_state;
+        (void)saved_state_size;
+        (void)guest_library;
+        error = "this build has no NativeActivity support";
+        return false;
+    }
+
     // Redirects guest file operations under one directory to another. Default: nothing, for an
     // engine with no guest runtime behind it.
     virtual void add_path_alias(const std::string& guest_prefix, const std::string& host_prefix) {
@@ -130,6 +147,7 @@ private:
         LoadState state = LoadState::Loading;
         std::thread::id owner;
         std::int32_t jni_version = 0;
+        std::uint32_t guest_handle = 0;  // the guest library, for ANativeActivity_onCreate
         std::string error;
     };
     enum class StartState { NotStarted, Starting, Started, Failed };
@@ -176,6 +194,9 @@ public:
     bool start(const LibraryRuntimeOptions& options, std::string& error) override;
     JniLoadReport load(JniBackend::Env env, const std::string& guest_library) override;
     void add_path_alias(const std::string& guest_prefix, const std::string& host_prefix) override;
+    bool create_native_activity(JniBackend::Env env, std::uint64_t activity, const void* saved_state,
+                                std::size_t saved_state_size, std::uint32_t guest_library,
+                                std::string& error) override;
 
     LibraryRuntime& runtime() { return *runtime_; }
     HostJni& host_jni() { return *host_jni_; }
@@ -191,6 +212,13 @@ public:
     HostSensors* host_sensors() { return host_sensors_; }
     HostInput* host_input() { return host_input_; }
     HostConfiguration* host_configuration() { return host_configuration_; }
+    HostNativeActivity* host_native_activity() { return host_native_activity_; }
+
+    // The Android side is installed after construction: the glue needs the units this engine
+    // builds, and those exist only once the engine does.
+    void set_native_activity_platform(NativeActivityPlatform* platform) {
+        native_activity_platform_ = platform;
+    }
     HostPlatformCompat* host_platform_compat() { return host_compat_; }
 
 protected:
@@ -211,6 +239,8 @@ private:
     HostSensors* host_sensors_ = nullptr;
     HostInput* host_input_ = nullptr;
     HostConfiguration* host_configuration_ = nullptr;
+    HostNativeActivity* host_native_activity_ = nullptr;
+    NativeActivityPlatform* native_activity_platform_ = nullptr;
     HostPlatformCompat* host_compat_ = nullptr;
     JniLoader* loader_;
 };

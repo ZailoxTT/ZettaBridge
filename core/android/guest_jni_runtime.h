@@ -6,6 +6,9 @@
 #include <string>
 
 #include "asset_driver_backend.h"
+#include "configuration_driver_backend.h"
+#include "input_driver_backend.h"
+#include "native_activity_glue.h"
 #include "egl_driver_backend.h"
 #include "gl_driver_backend.h"
 #include "jni_env_backend.h"
@@ -32,9 +35,11 @@ private:
     public:
         Engine(JniEnvBackend& backend, GlBackend& gl_backend, AssetBackend& asset_backend,
                EglBackend& egl_backend, NativeWindowBackend& window_backend,
-               AndroidLooperBackend& looper_backend)
+               AndroidLooperBackend& looper_backend, InputBackend& input_backend,
+               ConfigurationBackend& configuration_backend)
             : GuestJniEngine(backend, &gl_backend, gl_egl_context, &asset_backend,
-                             &egl_backend, &window_backend, &looper_backend),
+                             &egl_backend, &window_backend, &looper_backend, &input_backend,
+                             &configuration_backend),
               jni_backend_(backend) {
             // Opt-in only: the GL instrumentation reads back whole framebuffers and diffs pixels
             // per draw, which is far too expensive for a release run. Gated exactly like
@@ -59,7 +64,12 @@ private:
     EglDriverBackend egl_backend_;
     AndroidNativeWindowBackend window_backend_;
     AndroidLooperDriverBackend looper_backend_;
+    InputDriverBackend input_backend_;
+    ConfigurationDriverBackend configuration_backend_;
     Engine engine_;
+    // Built after the engine, because it hands the engine's own units to the framework's
+    // callbacks; installed into the engine right after construction.
+    NativeActivityGlue native_activity_glue_;
     ProxyRuntime proxies_;
 };
 

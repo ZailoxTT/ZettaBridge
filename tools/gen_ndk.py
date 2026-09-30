@@ -27,13 +27,6 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
 import gen_stubs  # noqa: E402
 
-# The API level core/android is built against (ANDROID_PLATFORM in the CMake command). An entry
-# point introduced later cannot be called directly: the NDK marks it unavailable. It is looked up
-# at run time instead, which is right anyway - the device may be older than the entry point.
-BUILD_API = 29
-API_LEVELS = {"__ANDROID_API_S__": 31, "__ANDROID_API_S_V2__": 32, "__ANDROID_API_T__": 33,
-              "__ANDROID_API_U__": 34, "__ANDROID_API_V__": 35}
-
 INCLUDE = os.path.join(os.path.expanduser("~"), "android-ndk-r29", "toolchains", "llvm", "prebuilt",
                        "linux-arm64", "sysroot", "usr", "include", "android")
 
@@ -152,16 +145,7 @@ def declarations(header, names):
             parameter_name = words[-1]
             parameter_type = " ".join(words[:-1]).replace("* ", "*").strip()
             parameters.append((parameter_type, parameter_name))
-        introduced = (match.group(4) or "").strip()
-        if introduced.isdigit():
-            level = int(introduced)
-        elif introduced in API_LEVELS:
-            level = API_LEVELS[introduced]
-        elif introduced:
-            level = 99  # an unknown marker is treated as late, which only costs a lookup
-        else:
-            level = 0
-        found.setdefault(name, (result, parameters, level))
+        found.setdefault(name, (result, parameters, 0))
     return found
 
 
@@ -322,20 +306,16 @@ def driver_include(family, entries):
                 call_arguments.append("static_cast<%s>(%s)" % (ndk_type, parameter_name))
             else:
                 call_arguments.append(parameter_name)
-        # Qualified: inside the class the unqualified name is this very override, and the call
-        # would recurse into itself instead of reaching the NDK.
+        # Every entry point is resolved once at run time rather than linked: the NDK headers are
+        # not a reliable guide to which API level a symbol appeared in (AConfiguration_setScreenRound
+        # carries no marker yet exists only from 30), and a device older than the entry point must
+        # get a default instead of failing to load the library at all.
         returns = "" if host_result == "void" else "return "
-        if level <= BUILD_API:
-            body = "::%s(%s)" % (name, ", ".join(call_arguments))
-            lines.append("%s %s(%s) override { %s%s; }" % (host_result, name, parameters, returns, body))
-            continue
-        # Introduced after the level we build against: resolved once at run time, and answered
-        # with a default on a device that does not have it.
         signature = "%s (*)(%s)" % (host_result, ", ".join(
             next((ndk for _host, lookup, ndk in HANDLES.values() if lookup == kind), host_type)
             for host_type, kind, _parameter_name in arguments))
         default = "" if host_result == "void" else " return %s{};" % host_result
-        lines.append("%s %s(%s) override {  // Android %d" % (host_result, name, parameters, level))
+        lines.append("%s %s(%s) override {" % (host_result, name, parameters))
         lines.append("    using Fn = %s;" % signature)
         lines.append("    static Fn fn = reinterpret_cast<Fn>(dlsym(RTLD_DEFAULT, \"%s\"));" % name)
         lines.append("    if (fn == nullptr) {%s }" % (default if default else " return;"))
