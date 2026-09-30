@@ -591,6 +591,8 @@ bool Process::after_stop(GuestThread& thread) {
     return false;
 }
 
+Process* Process::reporter_process = nullptr;
+
 // The translator does not always throw when it cannot go on: a failed check inside it calls
 // std::terminate directly, and the process dies with the message "terminating" and a stripped
 // backtrace. Nothing can catch that, but the guest program counter of the thread it happened on
@@ -598,12 +600,19 @@ bool Process::after_stop(GuestThread& thread) {
 void Process::install_terminate_reporter() {
     static std::terminate_handler previous = nullptr;
     static std::once_flag once;
+    // One guest process has one Process, and it outlives everything: the handler needs it only to
+    // name the library an address belongs to.
+    reporter_process = this;
     std::call_once(once, [] {
         previous = std::set_terminate([] {
             if (GuestThread* thread = Process::current_thread()) {
-                char detail[96];
-                std::snprintf(detail, sizeof detail, "pc 0x%08x (the translator stopped the process)",
-                              thread->regs()[15]);
+                // The bare address says nothing: what is needed is the library and the offset in
+                // it, which is exactly what the crash report already resolves.
+                const std::uint32_t pc = thread->regs()[15];
+                const std::string where =
+                    reporter_process != nullptr ? reporter_process->describe_address(pc) : std::string();
+                char detail[192];
+                std::snprintf(detail, sizeof detail, "pc 0x%08x %s", pc, where.c_str());
                 log("terminating while running guest code at %s", detail);
                 runtime_report().note_jni_detail("translator-gave-up", detail, true);
             } else {
