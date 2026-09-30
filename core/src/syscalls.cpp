@@ -1675,6 +1675,16 @@ bool handle_syscall(Process& proc, GuestThread& thread) {
         log("%s(0x%x, 0x%x, 0x%x, 0x%x) = %d", syscall_name(nr), c.a[0], c.a[1], c.a[2], c.a[3], res);
     }
     if (c.stop) return false;
+    // The pc of the svc itself: the stop recorded the instruction after it, and Thumb svc is two
+    // bytes where ARM is four.
+    thread.syscall_restartable = res == -EINTR;
+    if (thread.syscall_restartable) {
+        const bool thumb = (thread.cpsr() & 0x20u) != 0;
+        thread.restart_pc = regs[15] - (thumb ? 2u : 4u);
+        for (unsigned i = 0; i < 6; ++i) thread.restart_regs[i] = c.a[i];
+        thread.restart_regs[6] = regs[6];
+        thread.restart_regs[7] = nr;
+    }
     if (!c.no_result) regs[0] = static_cast<std::uint32_t>(res);
     return true;
 }

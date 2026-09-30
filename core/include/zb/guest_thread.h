@@ -115,6 +115,13 @@ public:
 
     // Emulated per-thread kernel state.
     std::uint64_t sigmask = 0;
+    // A syscall that ended in EINTR and can be restarted. The kernel restarts such a call by
+    // itself when the handler that interrupted it was installed with SA_RESTART, and a guest that
+    // trusts that does not retry: Unity treats an interrupted semaphore wait as a failure, and
+    // mono and FMOD signal often enough that it happens within seconds.
+    bool syscall_restartable = false;
+    std::uint32_t restart_pc = 0;                 // the svc instruction itself
+    std::array<std::uint32_t, 8> restart_regs{};  // r0-r7 as the call was made
     // The mask a signal frame must record instead of `sigmask`, set while sigsuspend runs with a
     // temporary mask: the handler runs under the temporary mask and sigreturn restores this one.
     std::optional<std::uint64_t> saved_sigmask;

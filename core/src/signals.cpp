@@ -21,6 +21,7 @@ namespace {
 constexpr std::uint32_t kSaSiginfo = 0x00000004;
 constexpr std::uint32_t kSaRestorer = 0x04000000;
 constexpr std::uint32_t kSaOnstack = 0x08000000;
+constexpr std::uint32_t kSaRestart = 0x10000000;
 constexpr std::uint32_t kSaNodefer = 0x40000000;
 constexpr std::uint32_t kSaResethand = 0x80000000;
 constexpr std::uint32_t kSigDfl = 0;
@@ -207,6 +208,17 @@ bool Process::deliver_signal(GuestThread& thread, const g::siginfo32& info, bool
     }
 
     auto& regs = thread.regs();
+    // A syscall the guest was inside when this signal arrived. The kernel restarts it after the
+    // handler when the handler asked for that, and a guest that trusts it does not retry: Unity
+    // fails an interrupted semaphore wait outright. The restart is arranged before the frame is
+    // built, so sigreturn resumes at the svc itself.
+    if (thread.syscall_restartable) {
+        if ((act.flags & kSaRestart) != 0) {
+            for (unsigned i = 0; i < 8; ++i) regs[i] = thread.restart_regs[i];
+            regs[15] = thread.restart_pc;
+        }
+        thread.syscall_restartable = false;
+    }
     const g::stack32& alt = thread.altstack;
     const bool alt_enabled = alt.ss_flags != kSsDisable && alt.ss_size != 0;
     const bool on_altstack = alt_enabled && regs[13] - alt.ss_sp < alt.ss_size;
