@@ -214,7 +214,15 @@ bool pixel_pointer(HostGl& host, HostGl::Call& call, bool pack, GLenum format, G
     // height*depth tall image: only the very last row is unpadded.
     const auto bytes = gl_pixel_bytes(format, type, width, static_cast<GLsizei>(rows), alignment);
     if (!bytes) {
-        call.fail(kGlInvalidValue, "pixel format, type, dimensions or alignment is invalid");
+        // Naming the pair is the whole point: a rejected upload is a texture that stays black,
+        // and which format and type were refused decides what to add. Orange Roulette's black
+        // screen was one such pair (GL_BGRA_EXT), found the same way.
+        char reason[128];
+        std::snprintf(reason, sizeof reason,
+                      "pixel format 0x%x type 0x%x %dx%d alignment %d is not accepted",
+                      static_cast<unsigned>(format), static_cast<unsigned>(type), width,
+                      static_cast<int>(rows), static_cast<int>(alignment));
+        call.fail(kGlInvalidValue, reason);
         return false;
     }
     out = call.pointer<void>(position, *bytes, permission);
