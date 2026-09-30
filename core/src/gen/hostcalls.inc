@@ -490,3 +490,4 @@
 {488, "libandroid.so", "AConfiguration_setTouchscreen"},
 {489, "libandroid.so", "AConfiguration_setUiModeNight"},
 {490, "libandroid.so", "AConfiguration_setUiModeType"},
+{491, "libandroid.so", "ALooper_pollAll"},

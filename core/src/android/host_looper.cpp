@@ -1,5 +1,6 @@
 #include "zb/host_looper.h"
 
+#include <chrono>
 #include <sys/eventfd.h>
 #include <poll.h>
 #include <unistd.h>
@@ -469,6 +470,27 @@ struct HostLooper::Impl {
         return 1;
     }
 
+    // The old ALooper_pollAll: the same wait, except that it never hands a callback result back
+    // to the caller. It keeps polling until something the caller can act on happens, so a guest
+    // loop that ignores ALOOPER_POLL_CALLBACK (Unity 4.5 does) still makes progress.
+    int poll_all(GuestThread& thread, int timeout, std::uint32_t out_fd, std::uint32_t out_events,
+                 std::uint32_t out_data) {
+        using Clock = std::chrono::steady_clock;
+        const Clock::time_point deadline =
+            timeout > 0 ? Clock::now() + std::chrono::milliseconds(timeout) : Clock::time_point{};
+        int remaining = timeout;
+        for (;;) {
+            const int result = poll_once(thread, remaining, out_fd, out_events, out_data);
+            if (result != kPollCallback) return result;
+            if (timeout == 0) return kPollTimeout;  // a poll that must not block ends here
+            if (timeout > 0) {
+                const auto left = std::chrono::duration_cast<std::chrono::milliseconds>(deadline - Clock::now());
+                if (left.count() <= 0) return kPollTimeout;
+                remaining = static_cast<int>(left.count());
+            }
+        }
+    }
+
     // Gives this thread's looper a real Android looper and moves its registrations onto it. The
     // caller is AInputQueue_attachLooper: a host input queue can only be polled by a real looper,
     // and this thread is a real host thread, so it can have one.
@@ -785,6 +807,8 @@ bool HostLooper::handle_host_call(std::uint32_t index, GuestThread& thread) {
         return finish(0);
     case ZB_COMPAT_HC_ALooper_pollOnce:
         return finish(impl_->poll_once(thread, static_cast<std::int32_t>(r0), r1, r2, r3));
+    case ZB_COMPAT_HC_ALooper_pollAll:
+        return finish(impl_->poll_all(thread, static_cast<std::int32_t>(r0), r1, r2, r3));
     default:
         return false;
     }

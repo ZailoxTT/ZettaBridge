@@ -178,6 +178,15 @@ def input_names():
     return sorted(names)
 
 
+def looper_pollall_names():
+    """ALooper_pollAll, appended late because it turned up in a real guest after the rest.
+
+    Removed from the NDK headers long ago but still imported by Unity 4.5's libmain.so, and one
+    unresolved import stops the whole library from loading.
+    """
+    return ["ALooper_pollAll"]
+
+
 def configuration_names():
     """Every AConfiguration_* entry point of the NDK header."""
     names = set()
@@ -211,6 +220,8 @@ LIBRARIES = [
     ("libandroid", input_names),
     # Configuration, after input for the same append-only reason.
     ("libandroid", configuration_names),
+    # ALooper_pollAll, last: Unity 4.5 imports it and nothing else here does.
+    ("libandroid", looper_pollall_names),
 ]
 
 

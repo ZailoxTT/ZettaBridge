@@ -22,5 +22,8 @@ inline constexpr std::uint32_t ZB_COMPAT_HC_ALooper_prepare = 224u;
 inline constexpr std::uint32_t ZB_COMPAT_HC_ALooper_release = 225u;
 inline constexpr std::uint32_t ZB_COMPAT_HC_ALooper_removeFd = 226u;
 inline constexpr std::uint32_t ZB_COMPAT_HC_ALooper_wake = 227u;
+// Appended after the input and configuration ranges: ALooper_pollAll is gone from the NDK headers
+// but Unity 4.5 still imports it, and it was added once a real guest asked for it.
+inline constexpr std::uint32_t ZB_COMPAT_HC_ALooper_pollAll = 491u;
 
 }  // namespace zb

@@ -142,7 +142,9 @@ from, and what happens.
   path mapping, the Boehm collector's stop-the-world handshake and the extension list an Adreno
   driver advertises. The work here is independent, but the findings shortened it considerably,
   and the branch named its limits as carefully as its results.
-- Everyone who starred the repository or supported it on Boosty in its first weeks. A project
+- **[@zzahkaboom24](https://github.com/zzahkaboom24)**, the project's first supporter on Boosty,
+  and its first star.
+- Everyone else who starred the repository or supported it on Boosty in its first weeks. A project
   like this one is a long stretch of black screens; knowing someone is waiting for it helps.
 
 ## License
