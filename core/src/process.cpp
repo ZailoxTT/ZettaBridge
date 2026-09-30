@@ -517,7 +517,31 @@ bool Process::dispatch_stop(GuestThread& thread, const Stop& stop) {
         if ((stop.swi & 0xFF0000u) == kHostCallBase) {
             const std::uint32_t index = stop.swi & 0xFFFFu;
             record_thread_activity(thread.tid, ThreadActivityKind::kHostCall, index);
-            if (host_call_handler_ && host_call_handler_(index, thread)) {
+            // A host call is host C++ called from translated guest code, and an exception that
+            // escapes it has no frame above to catch it: the process dies with "terminating" and
+            // nothing else. The name of the call and the reason are worth far more than the
+            // abort, so they go into the report and the guest is stopped instead.
+            bool served = false;
+            try {
+                served = host_call_handler_ && host_call_handler_(index, thread);
+            } catch (const std::exception& failure) {
+                const auto [failed_library, failed_name] = host_call_name(index);
+                std::string detail = std::string(failed_library) + ":" + failed_name + ": " + failure.what();
+                log("host call %s threw: %s", failed_name, failure.what());
+                runtime_report().note_jni_detail("host-call-threw", detail, true);
+                record_thread_activity_done(thread.tid);
+                request_exit(70);
+                return false;
+            } catch (...) {
+                const auto [failed_library, failed_name] = host_call_name(index);
+                log("host call %s threw a non-standard exception", failed_name);
+                runtime_report().note_jni_detail("host-call-threw",
+                                                 std::string(failed_library) + ":" + failed_name, true);
+                record_thread_activity_done(thread.tid);
+                request_exit(70);
+                return false;
+            }
+            if (served) {
                 record_thread_activity_done(thread.tid);
                 return !exiting_;
             }
@@ -566,7 +590,25 @@ bool Process::after_stop(GuestThread& thread) {
 
 void Process::thread_loop(GuestThread& thread) {
     set_current_thread(&thread);
-    while (dispatch_stop(thread, thread.run()) && after_stop(thread)) {
+    // The translator throws for what it cannot translate (an instruction its backend does not
+    // implement), and nothing above this loop can catch it: the process aborts with "terminating"
+    // and no hint of which instruction it was. The program counter and the reason are the whole
+    // answer, so they go into the report and this guest thread ends instead.
+    try {
+        while (dispatch_stop(thread, thread.run()) && after_stop(thread)) {
+        }
+    } catch (const std::exception& failure) {
+        char where[96];
+        std::snprintf(where, sizeof where, "pc 0x%08x: %s", thread.regs()[15], failure.what());
+        log("the translator gave up at %s", where);
+        runtime_report().note_jni_detail("translator-gave-up", where, true);
+        request_exit(71);
+    } catch (...) {
+        char where[64];
+        std::snprintf(where, sizeof where, "pc 0x%08x", thread.regs()[15]);
+        log("the translator gave up at %s", where);
+        runtime_report().note_jni_detail("translator-gave-up", where, true);
+        request_exit(71);
     }
 }
 
