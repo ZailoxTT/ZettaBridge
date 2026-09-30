@@ -1570,3 +1570,65 @@ The device run with the GL_R8/GL_RED swizzle A/B showed no text improvement, onl
 recovery and occasional crashes, so the acceptance criterion failed. The A/B compatibility commit
 is reverted; the sampling-semantic boundary it targeted is ruled out. Next: instrument the real
 onscreen text draws instead of the offscreen warm-up samples.
+
+## 2026-09-30: Unity 4.5 (Thomas Was Alone) brought up to frames; a race remains
+
+Phase 7b (NativeActivity, input, configuration) is implemented through task 7 and pushed to
+`main` (31 commits, `61f4656`). On the OnePlus 13, Unity 4.5 with Mono now loads, runs, creates
+its EGL context and draws: up to 107k GL calls and 1192 presented frames in a run, with audio
+(FMOD) and touch reaching the guest. The game still does not get past its splash.
+
+### Fixed today, each found from one report or log line
+
+- `libzbproxy.so` exports `ANativeActivity_onCreate` (the framework looks it up in the library the
+  manifest names, which for a plugin is the proxy). Its own check refused the new export, so the
+  proxy silently kept building without it; `tools/check_zbproxy.py` now names both entry points.
+- A per-plugin copy of the proxy is replaced when the template is newer; it used to be created
+  once and reused forever, so a fixed proxy never reached an already-imported plugin.
+- CP15 memory barriers (`mcr p15, 0, rX, c7, c10, 4/5` and `c7, c5, 4`). Mono writes the pre-ARMv7
+  form in its own barrier; an unserved CP15 write ended the process through `std::terminate` with
+  no catchable exception. `guest/tests/cp15_barrier_dynamic.c`.
+- `ALooper_pollAll`, gone from the NDK headers, still imported by Unity 4.5's `libmain.so`.
+- `libGLESv1_CM.so`, which `libunity.so` lists as a dependency. Adding it caused the next problem:
+  its 145 names got their own host-call indices, and the guest linker bound Unity's texture and
+  state calls to those empty stubs. A name exported by two guest libraries is now **one** host
+  call (`tools/gen_stubs.py`), reached through either.
+- `GL_HALF_FLOAT_OES` uploads (Unity probes half-float support with an 8x8 texture).
+- `SA_RESTART`: a syscall that ends in `EINTR` records how it was made, and a signal whose action
+  carries the flag rewinds to the `svc` and restores the arguments. Restarting *everything* was a
+  regression (a wait with a deadline restarted forever, zero frames); the rule now matches the
+  kernel - see `restartable_syscall` in `core/src/syscalls.cpp`.
+- Diagnostics that made the above findable: a terminate handler that records the guest pc and the
+  library it falls in, a catch around `GuestThread::run`, a catch around host calls, the pixel
+  format and type of a rejected upload, and archive opens in the report.
+
+### Ruled out, with evidence
+
+- **The guest's zlib is correct under translation.** `guest/tests/zlib_dynamic.c` compresses and
+  decompresses 256 KiB through the sysroot's own `libz.so`: byte-identical, checksums match.
+- **Guest file reading is correct.** `guest/tests/filemap_dynamic.c` covers a whole-file mapping,
+  a window mapping at an offset, `pread` at unaligned offsets, a read past the end and a seek to a
+  large offset: all match the source.
+- **The plugin opens the right archive.** The report shows
+  `plugins/com.bossastudios.twadroid_humble/base.apk`, not the launcher's APK.
+
+### The open problem
+
+Runs of the same build differ wildly: 3, 413, 617, 1192 presented frames. One run showed 135k
+`Inflate Error: invalid stored block lengths` from Unity (corrupt zip input) and exited; the next
+run, with only a reporting change in between, showed none and ended in an ANR instead. That is a
+race, not a missing feature, and the code most recently touched around it is signal delivery and
+the restart of interrupted syscalls.
+
+**Next step (planned, not started): reproduce it on this machine.** A guest stress test where
+several threads read a file, wait on futexes and semaphores while another thread signals them
+continuously, checking that the bytes read match the source and that no thread stops making
+progress. If it reproduces here, the cycle is a rebuild rather than an APK reinstall and a device
+run. Start from `guest/tests/sigrestart_dynamic.c` and `guest/tests/filemap_dynamic.c`.
+
+Device loop, for reference: `ninja -C build/android-arm64`, `tools/make_launcher_bundle.sh`,
+`cd android/launcher && ANDROID_HOME=$HOME/android-sdk ./gradlew --offline -q assembleRelease`,
+copy to `/sdcard`. The report the phone writes is
+`/storage/emulated/0/Android/data/com.zettabridge.launcher/files/zb-runtime-report.txt`;
+`su -c "logcat -b all --pid=$(su -c pidof com.zettabridge.launcher:guest)"` is the only way to see
+the guest's own log, because the ROM drops third-party logcat.
