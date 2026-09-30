@@ -101,6 +101,8 @@ public:
     static void set_current_thread(GuestThread* thread);
     // Guest thread running on the calling host thread, or nullptr.
     static GuestThread* current_thread();
+    // Records the guest program counter when the translator ends the process outright.
+    static void install_terminate_reporter();
     // Guest thread that takes host signals arriving on threads without guest code. A published
     // target must be cleared before another one is set.
     static void set_process_signal_target(GuestThread* thread);

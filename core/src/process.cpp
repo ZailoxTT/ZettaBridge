@@ -7,6 +7,8 @@
 #include <unistd.h>
 
 #include <atomic>
+#include <exception>
+#include <mutex>
 
 #include <cerrno>
 #include <climits>
@@ -469,6 +471,7 @@ int Process::run(const std::string& path, const std::vector<std::string>& argv, 
     register_thread(main_.get());
     set_process_signal_target(main_.get());
     install_host_signal_forwarding();
+    install_terminate_reporter();
 
     thread_loop(*main_);
     // Every return below retires what run() published, so destroying the Process afterwards cannot
@@ -586,6 +589,30 @@ bool Process::after_stop(GuestThread& thread) {
     if (!thread.has_pending_signals(thread.sigmask) || dispatch_pending_signals(thread)) return true;
     if (thread_count() > 1) exit_host_process();
     return false;
+}
+
+// The translator does not always throw when it cannot go on: a failed check inside it calls
+// std::terminate directly, and the process dies with the message "terminating" and a stripped
+// backtrace. Nothing can catch that, but the guest program counter of the thread it happened on
+// is the whole answer, and this thread still knows it.
+void Process::install_terminate_reporter() {
+    static std::terminate_handler previous = nullptr;
+    static std::once_flag once;
+    std::call_once(once, [] {
+        previous = std::set_terminate([] {
+            if (GuestThread* thread = Process::current_thread()) {
+                char detail[96];
+                std::snprintf(detail, sizeof detail, "pc 0x%08x (the translator stopped the process)",
+                              thread->regs()[15]);
+                log("terminating while running guest code at %s", detail);
+                runtime_report().note_jni_detail("translator-gave-up", detail, true);
+            } else {
+                runtime_report().note_jni_detail("translator-gave-up", "outside guest code", true);
+            }
+            if (previous != nullptr) previous();
+            std::abort();
+        });
+    });
 }
 
 void Process::thread_loop(GuestThread& thread) {
