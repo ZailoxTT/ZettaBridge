@@ -247,6 +247,12 @@ def main():
     index = 0
     rows = []
     assemblies = {}
+    # A name that two guest libraries both export is one host call, not two. GLES 1 and GLES 2
+    # share most of their entry points, and the guest linker binds a caller to whichever library
+    # comes first: giving the GLES 1 copy its own index would send a call that GLES 2 already
+    # serves into an empty stub instead. Unity did exactly that - its texture and state calls
+    # landed in libGLESv1_CM.so and did nothing.
+    assigned = {}
     for lib, source in LIBRARIES:
         names = source()
         if not names:
@@ -262,19 +268,24 @@ def main():
             ],
         )
         for name in names:
-            if index >= RESERVED_HOST_CALL_FIRST:
+            shared = assigned.get(name)
+            if shared is None and index >= RESERVED_HOST_CALL_FIRST:
                 sys.exit("too many host calls: index 0x%x reaches the reserved range" % index)
+            entry = shared if shared is not None else index
             lines += [
                 ".global %s" % name,
                 ".type %s, %%function" % name,
                 ".p2align 2",
                 "%s:" % name,
-                "    svc #0x%x" % (HOST_CALL_BASE | index),
+                "    svc #0x%x" % (HOST_CALL_BASE | entry),
                 "    bx lr",
                 ".size %s, . - %s" % (name, name),
                 "",
             ]
+            if shared is not None:
+                continue  # the same host call, reached through a second library
             rows.append((index, lib + ".so", name))
+            assigned[name] = index
             index += 1
         print("%s: %d functions" % (lib, len(names)))
 

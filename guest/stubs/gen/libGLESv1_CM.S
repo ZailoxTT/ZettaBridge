@@ -7,7 +7,7 @@
 .type glActiveTexture, %function
 .p2align 2
 glActiveTexture:
-    svc #0x5a01ec
+    svc #0x5a0000
     bx lr
 .size glActiveTexture, . - glActiveTexture
 
@@ -15,7 +15,7 @@ glActiveTexture:
 .type glAlphaFunc, %function
 .p2align 2
 glAlphaFunc:
-    svc #0x5a01ed
+    svc #0x5a01ec
     bx lr
 .size glAlphaFunc, . - glAlphaFunc
 
@@ -23,7 +23,7 @@ glAlphaFunc:
 .type glAlphaFuncx, %function
 .p2align 2
 glAlphaFuncx:
-    svc #0x5a01ee
+    svc #0x5a01ed
     bx lr
 .size glAlphaFuncx, . - glAlphaFuncx
 
@@ -31,7 +31,7 @@ glAlphaFuncx:
 .type glBindBuffer, %function
 .p2align 2
 glBindBuffer:
-    svc #0x5a01ef
+    svc #0x5a0003
     bx lr
 .size glBindBuffer, . - glBindBuffer
 
@@ -39,7 +39,7 @@ glBindBuffer:
 .type glBindTexture, %function
 .p2align 2
 glBindTexture:
-    svc #0x5a01f0
+    svc #0x5a0006
     bx lr
 .size glBindTexture, . - glBindTexture
 
@@ -47,7 +47,7 @@ glBindTexture:
 .type glBlendFunc, %function
 .p2align 2
 glBlendFunc:
-    svc #0x5a01f1
+    svc #0x5a000a
     bx lr
 .size glBlendFunc, . - glBlendFunc
 
@@ -55,7 +55,7 @@ glBlendFunc:
 .type glBufferData, %function
 .p2align 2
 glBufferData:
-    svc #0x5a01f2
+    svc #0x5a000c
     bx lr
 .size glBufferData, . - glBufferData
 
@@ -63,7 +63,7 @@ glBufferData:
 .type glBufferSubData, %function
 .p2align 2
 glBufferSubData:
-    svc #0x5a01f3
+    svc #0x5a000d
     bx lr
 .size glBufferSubData, . - glBufferSubData
 
@@ -71,7 +71,7 @@ glBufferSubData:
 .type glClear, %function
 .p2align 2
 glClear:
-    svc #0x5a01f4
+    svc #0x5a000f
     bx lr
 .size glClear, . - glClear
 
@@ -79,7 +79,7 @@ glClear:
 .type glClearColor, %function
 .p2align 2
 glClearColor:
-    svc #0x5a01f5
+    svc #0x5a0010
     bx lr
 .size glClearColor, . - glClearColor
 
@@ -87,7 +87,7 @@ glClearColor:
 .type glClearColorx, %function
 .p2align 2
 glClearColorx:
-    svc #0x5a01f6
+    svc #0x5a01ee
     bx lr
 .size glClearColorx, . - glClearColorx
 
@@ -95,7 +95,7 @@ glClearColorx:
 .type glClearDepthf, %function
 .p2align 2
 glClearDepthf:
-    svc #0x5a01f7
+    svc #0x5a0011
     bx lr
 .size glClearDepthf, . - glClearDepthf
 
@@ -103,7 +103,7 @@ glClearDepthf:
 .type glClearDepthx, %function
 .p2align 2
 glClearDepthx:
-    svc #0x5a01f8
+    svc #0x5a01ef
     bx lr
 .size glClearDepthx, . - glClearDepthx
 
@@ -111,7 +111,7 @@ glClearDepthx:
 .type glClearStencil, %function
 .p2align 2
 glClearStencil:
-    svc #0x5a01f9
+    svc #0x5a0012
     bx lr
 .size glClearStencil, . - glClearStencil
 
@@ -119,7 +119,7 @@ glClearStencil:
 .type glClientActiveTexture, %function
 .p2align 2
 glClientActiveTexture:
-    svc #0x5a01fa
+    svc #0x5a01f0
     bx lr
 .size glClientActiveTexture, . - glClientActiveTexture
 
@@ -127,7 +127,7 @@ glClientActiveTexture:
 .type glClipPlanef, %function
 .p2align 2
 glClipPlanef:
-    svc #0x5a01fb
+    svc #0x5a01f1
     bx lr
 .size glClipPlanef, . - glClipPlanef
 
@@ -135,7 +135,7 @@ glClipPlanef:
 .type glClipPlanex, %function
 .p2align 2
 glClipPlanex:
-    svc #0x5a01fc
+    svc #0x5a01f2
     bx lr
 .size glClipPlanex, . - glClipPlanex
 
@@ -143,7 +143,7 @@ glClipPlanex:
 .type glColor4f, %function
 .p2align 2
 glColor4f:
-    svc #0x5a01fd
+    svc #0x5a01f3
     bx lr
 .size glColor4f, . - glColor4f
 
@@ -151,7 +151,7 @@ glColor4f:
 .type glColor4ub, %function
 .p2align 2
 glColor4ub:
-    svc #0x5a01fe
+    svc #0x5a01f4
     bx lr
 .size glColor4ub, . - glColor4ub
 
@@ -159,7 +159,7 @@ glColor4ub:
 .type glColor4x, %function
 .p2align 2
 glColor4x:
-    svc #0x5a01ff
+    svc #0x5a01f5
     bx lr
 .size glColor4x, . - glColor4x
 
@@ -167,7 +167,7 @@ glColor4x:
 .type glColorMask, %function
 .p2align 2
 glColorMask:
-    svc #0x5a0200
+    svc #0x5a0013
     bx lr
 .size glColorMask, . - glColorMask
 
@@ -175,7 +175,7 @@ glColorMask:
 .type glColorPointer, %function
 .p2align 2
 glColorPointer:
-    svc #0x5a0201
+    svc #0x5a01f6
     bx lr
 .size glColorPointer, . - glColorPointer
 
@@ -183,7 +183,7 @@ glColorPointer:
 .type glCompressedTexImage2D, %function
 .p2align 2
 glCompressedTexImage2D:
-    svc #0x5a0202
+    svc #0x5a0015
     bx lr
 .size glCompressedTexImage2D, . - glCompressedTexImage2D
 
@@ -191,7 +191,7 @@ glCompressedTexImage2D:
 .type glCompressedTexSubImage2D, %function
 .p2align 2
 glCompressedTexSubImage2D:
-    svc #0x5a0203
+    svc #0x5a0016
     bx lr
 .size glCompressedTexSubImage2D, . - glCompressedTexSubImage2D
 
@@ -199,7 +199,7 @@ glCompressedTexSubImage2D:
 .type glCopyTexImage2D, %function
 .p2align 2
 glCopyTexImage2D:
-    svc #0x5a0204
+    svc #0x5a0017
     bx lr
 .size glCopyTexImage2D, . - glCopyTexImage2D
 
@@ -207,7 +207,7 @@ glCopyTexImage2D:
 .type glCopyTexSubImage2D, %function
 .p2align 2
 glCopyTexSubImage2D:
-    svc #0x5a0205
+    svc #0x5a0018
     bx lr
 .size glCopyTexSubImage2D, . - glCopyTexSubImage2D
 
@@ -215,7 +215,7 @@ glCopyTexSubImage2D:
 .type glCullFace, %function
 .p2align 2
 glCullFace:
-    svc #0x5a0206
+    svc #0x5a001b
     bx lr
 .size glCullFace, . - glCullFace
 
@@ -223,7 +223,7 @@ glCullFace:
 .type glDeleteBuffers, %function
 .p2align 2
 glDeleteBuffers:
-    svc #0x5a0207
+    svc #0x5a001c
     bx lr
 .size glDeleteBuffers, . - glDeleteBuffers
 
@@ -231,7 +231,7 @@ glDeleteBuffers:
 .type glDeleteTextures, %function
 .p2align 2
 glDeleteTextures:
-    svc #0x5a0208
+    svc #0x5a0021
     bx lr
 .size glDeleteTextures, . - glDeleteTextures
 
@@ -239,7 +239,7 @@ glDeleteTextures:
 .type glDepthFunc, %function
 .p2align 2
 glDepthFunc:
-    svc #0x5a0209
+    svc #0x5a0022
     bx lr
 .size glDepthFunc, . - glDepthFunc
 
@@ -247,7 +247,7 @@ glDepthFunc:
 .type glDepthMask, %function
 .p2align 2
 glDepthMask:
-    svc #0x5a020a
+    svc #0x5a0023
     bx lr
 .size glDepthMask, . - glDepthMask
 
@@ -255,7 +255,7 @@ glDepthMask:
 .type glDepthRangef, %function
 .p2align 2
 glDepthRangef:
-    svc #0x5a020b
+    svc #0x5a0024
     bx lr
 .size glDepthRangef, . - glDepthRangef
 
@@ -263,7 +263,7 @@ glDepthRangef:
 .type glDepthRangex, %function
 .p2align 2
 glDepthRangex:
-    svc #0x5a020c
+    svc #0x5a01f7
     bx lr
 .size glDepthRangex, . - glDepthRangex
 
@@ -271,7 +271,7 @@ glDepthRangex:
 .type glDisable, %function
 .p2align 2
 glDisable:
-    svc #0x5a020d
+    svc #0x5a0026
     bx lr
 .size glDisable, . - glDisable
 
@@ -279,7 +279,7 @@ glDisable:
 .type glDisableClientState, %function
 .p2align 2
 glDisableClientState:
-    svc #0x5a020e
+    svc #0x5a01f8
     bx lr
 .size glDisableClientState, . - glDisableClientState
 
@@ -287,7 +287,7 @@ glDisableClientState:
 .type glDrawArrays, %function
 .p2align 2
 glDrawArrays:
-    svc #0x5a020f
+    svc #0x5a0028
     bx lr
 .size glDrawArrays, . - glDrawArrays
 
@@ -295,7 +295,7 @@ glDrawArrays:
 .type glDrawElements, %function
 .p2align 2
 glDrawElements:
-    svc #0x5a0210
+    svc #0x5a0029
     bx lr
 .size glDrawElements, . - glDrawElements
 
@@ -303,7 +303,7 @@ glDrawElements:
 .type glEnable, %function
 .p2align 2
 glEnable:
-    svc #0x5a0211
+    svc #0x5a002a
     bx lr
 .size glEnable, . - glEnable
 
@@ -311,7 +311,7 @@ glEnable:
 .type glEnableClientState, %function
 .p2align 2
 glEnableClientState:
-    svc #0x5a0212
+    svc #0x5a01f9
     bx lr
 .size glEnableClientState, . - glEnableClientState
 
@@ -319,7 +319,7 @@ glEnableClientState:
 .type glFinish, %function
 .p2align 2
 glFinish:
-    svc #0x5a0213
+    svc #0x5a002c
     bx lr
 .size glFinish, . - glFinish
 
@@ -327,7 +327,7 @@ glFinish:
 .type glFlush, %function
 .p2align 2
 glFlush:
-    svc #0x5a0214
+    svc #0x5a002d
     bx lr
 .size glFlush, . - glFlush
 
@@ -335,7 +335,7 @@ glFlush:
 .type glFogf, %function
 .p2align 2
 glFogf:
-    svc #0x5a0215
+    svc #0x5a01fa
     bx lr
 .size glFogf, . - glFogf
 
@@ -343,7 +343,7 @@ glFogf:
 .type glFogfv, %function
 .p2align 2
 glFogfv:
-    svc #0x5a0216
+    svc #0x5a01fb
     bx lr
 .size glFogfv, . - glFogfv
 
@@ -351,7 +351,7 @@ glFogfv:
 .type glFogx, %function
 .p2align 2
 glFogx:
-    svc #0x5a0217
+    svc #0x5a01fc
     bx lr
 .size glFogx, . - glFogx
 
@@ -359,7 +359,7 @@ glFogx:
 .type glFogxv, %function
 .p2align 2
 glFogxv:
-    svc #0x5a0218
+    svc #0x5a01fd
     bx lr
 .size glFogxv, . - glFogxv
 
@@ -367,7 +367,7 @@ glFogxv:
 .type glFrontFace, %function
 .p2align 2
 glFrontFace:
-    svc #0x5a0219
+    svc #0x5a0030
     bx lr
 .size glFrontFace, . - glFrontFace
 
@@ -375,7 +375,7 @@ glFrontFace:
 .type glFrustumf, %function
 .p2align 2
 glFrustumf:
-    svc #0x5a021a
+    svc #0x5a01fe
     bx lr
 .size glFrustumf, . - glFrustumf
 
@@ -383,7 +383,7 @@ glFrustumf:
 .type glFrustumx, %function
 .p2align 2
 glFrustumx:
-    svc #0x5a021b
+    svc #0x5a01ff
     bx lr
 .size glFrustumx, . - glFrustumx
 
@@ -391,7 +391,7 @@ glFrustumx:
 .type glGenBuffers, %function
 .p2align 2
 glGenBuffers:
-    svc #0x5a021c
+    svc #0x5a0031
     bx lr
 .size glGenBuffers, . - glGenBuffers
 
@@ -399,7 +399,7 @@ glGenBuffers:
 .type glGenTextures, %function
 .p2align 2
 glGenTextures:
-    svc #0x5a021d
+    svc #0x5a0034
     bx lr
 .size glGenTextures, . - glGenTextures
 
@@ -407,7 +407,7 @@ glGenTextures:
 .type glGetBooleanv, %function
 .p2align 2
 glGetBooleanv:
-    svc #0x5a021e
+    svc #0x5a003a
     bx lr
 .size glGetBooleanv, . - glGetBooleanv
 
@@ -415,7 +415,7 @@ glGetBooleanv:
 .type glGetBufferParameteriv, %function
 .p2align 2
 glGetBufferParameteriv:
-    svc #0x5a021f
+    svc #0x5a003b
     bx lr
 .size glGetBufferParameteriv, . - glGetBufferParameteriv
 
@@ -423,7 +423,7 @@ glGetBufferParameteriv:
 .type glGetClipPlanef, %function
 .p2align 2
 glGetClipPlanef:
-    svc #0x5a0220
+    svc #0x5a0200
     bx lr
 .size glGetClipPlanef, . - glGetClipPlanef
 
@@ -431,7 +431,7 @@ glGetClipPlanef:
 .type glGetClipPlanex, %function
 .p2align 2
 glGetClipPlanex:
-    svc #0x5a0221
+    svc #0x5a0201
     bx lr
 .size glGetClipPlanex, . - glGetClipPlanex
 
@@ -439,7 +439,7 @@ glGetClipPlanex:
 .type glGetError, %function
 .p2align 2
 glGetError:
-    svc #0x5a0222
+    svc #0x5a003c
     bx lr
 .size glGetError, . - glGetError
 
@@ -447,7 +447,7 @@ glGetError:
 .type glGetFixedv, %function
 .p2align 2
 glGetFixedv:
-    svc #0x5a0223
+    svc #0x5a0202
     bx lr
 .size glGetFixedv, . - glGetFixedv
 
@@ -455,7 +455,7 @@ glGetFixedv:
 .type glGetFloatv, %function
 .p2align 2
 glGetFloatv:
-    svc #0x5a0224
+    svc #0x5a003d
     bx lr
 .size glGetFloatv, . - glGetFloatv
 
@@ -463,7 +463,7 @@ glGetFloatv:
 .type glGetIntegerv, %function
 .p2align 2
 glGetIntegerv:
-    svc #0x5a0225
+    svc #0x5a003f
     bx lr
 .size glGetIntegerv, . - glGetIntegerv
 
@@ -471,7 +471,7 @@ glGetIntegerv:
 .type glGetLightfv, %function
 .p2align 2
 glGetLightfv:
-    svc #0x5a0226
+    svc #0x5a0203
     bx lr
 .size glGetLightfv, . - glGetLightfv
 
@@ -479,7 +479,7 @@ glGetLightfv:
 .type glGetLightxv, %function
 .p2align 2
 glGetLightxv:
-    svc #0x5a0227
+    svc #0x5a0204
     bx lr
 .size glGetLightxv, . - glGetLightxv
 
@@ -487,7 +487,7 @@ glGetLightxv:
 .type glGetMaterialfv, %function
 .p2align 2
 glGetMaterialfv:
-    svc #0x5a0228
+    svc #0x5a0205
     bx lr
 .size glGetMaterialfv, . - glGetMaterialfv
 
@@ -495,7 +495,7 @@ glGetMaterialfv:
 .type glGetMaterialxv, %function
 .p2align 2
 glGetMaterialxv:
-    svc #0x5a0229
+    svc #0x5a0206
     bx lr
 .size glGetMaterialxv, . - glGetMaterialxv
 
@@ -503,7 +503,7 @@ glGetMaterialxv:
 .type glGetPointerv, %function
 .p2align 2
 glGetPointerv:
-    svc #0x5a022a
+    svc #0x5a0207
     bx lr
 .size glGetPointerv, . - glGetPointerv
 
@@ -511,7 +511,7 @@ glGetPointerv:
 .type glGetString, %function
 .p2align 2
 glGetString:
-    svc #0x5a022b
+    svc #0x5a0047
     bx lr
 .size glGetString, . - glGetString
 
@@ -519,7 +519,7 @@ glGetString:
 .type glGetTexEnvfv, %function
 .p2align 2
 glGetTexEnvfv:
-    svc #0x5a022c
+    svc #0x5a0208
     bx lr
 .size glGetTexEnvfv, . - glGetTexEnvfv
 
@@ -527,7 +527,7 @@ glGetTexEnvfv:
 .type glGetTexEnviv, %function
 .p2align 2
 glGetTexEnviv:
-    svc #0x5a022d
+    svc #0x5a0209
     bx lr
 .size glGetTexEnviv, . - glGetTexEnviv
 
@@ -535,7 +535,7 @@ glGetTexEnviv:
 .type glGetTexEnvxv, %function
 .p2align 2
 glGetTexEnvxv:
-    svc #0x5a022e
+    svc #0x5a020a
     bx lr
 .size glGetTexEnvxv, . - glGetTexEnvxv
 
@@ -543,7 +543,7 @@ glGetTexEnvxv:
 .type glGetTexParameterfv, %function
 .p2align 2
 glGetTexParameterfv:
-    svc #0x5a022f
+    svc #0x5a0048
     bx lr
 .size glGetTexParameterfv, . - glGetTexParameterfv
 
@@ -551,7 +551,7 @@ glGetTexParameterfv:
 .type glGetTexParameteriv, %function
 .p2align 2
 glGetTexParameteriv:
-    svc #0x5a0230
+    svc #0x5a0049
     bx lr
 .size glGetTexParameteriv, . - glGetTexParameteriv
 
@@ -559,7 +559,7 @@ glGetTexParameteriv:
 .type glGetTexParameterxv, %function
 .p2align 2
 glGetTexParameterxv:
-    svc #0x5a0231
+    svc #0x5a020b
     bx lr
 .size glGetTexParameterxv, . - glGetTexParameterxv
 
@@ -567,7 +567,7 @@ glGetTexParameterxv:
 .type glHint, %function
 .p2align 2
 glHint:
-    svc #0x5a0232
+    svc #0x5a0050
     bx lr
 .size glHint, . - glHint
 
@@ -575,7 +575,7 @@ glHint:
 .type glIsBuffer, %function
 .p2align 2
 glIsBuffer:
-    svc #0x5a0233
+    svc #0x5a0051
     bx lr
 .size glIsBuffer, . - glIsBuffer
 
@@ -583,7 +583,7 @@ glIsBuffer:
 .type glIsEnabled, %function
 .p2align 2
 glIsEnabled:
-    svc #0x5a0234
+    svc #0x5a0052
     bx lr
 .size glIsEnabled, . - glIsEnabled
 
@@ -591,7 +591,7 @@ glIsEnabled:
 .type glIsTexture, %function
 .p2align 2
 glIsTexture:
-    svc #0x5a0235
+    svc #0x5a0057
     bx lr
 .size glIsTexture, . - glIsTexture
 
@@ -599,7 +599,7 @@ glIsTexture:
 .type glLightModelf, %function
 .p2align 2
 glLightModelf:
-    svc #0x5a0236
+    svc #0x5a020c
     bx lr
 .size glLightModelf, . - glLightModelf
 
@@ -607,7 +607,7 @@ glLightModelf:
 .type glLightModelfv, %function
 .p2align 2
 glLightModelfv:
-    svc #0x5a0237
+    svc #0x5a020d
     bx lr
 .size glLightModelfv, . - glLightModelfv
 
@@ -615,7 +615,7 @@ glLightModelfv:
 .type glLightModelx, %function
 .p2align 2
 glLightModelx:
-    svc #0x5a0238
+    svc #0x5a020e
     bx lr
 .size glLightModelx, . - glLightModelx
 
@@ -623,7 +623,7 @@ glLightModelx:
 .type glLightModelxv, %function
 .p2align 2
 glLightModelxv:
-    svc #0x5a0239
+    svc #0x5a020f
     bx lr
 .size glLightModelxv, . - glLightModelxv
 
@@ -631,7 +631,7 @@ glLightModelxv:
 .type glLightf, %function
 .p2align 2
 glLightf:
-    svc #0x5a023a
+    svc #0x5a0210
     bx lr
 .size glLightf, . - glLightf
 
@@ -639,7 +639,7 @@ glLightf:
 .type glLightfv, %function
 .p2align 2
 glLightfv:
-    svc #0x5a023b
+    svc #0x5a0211
     bx lr
 .size glLightfv, . - glLightfv
 
@@ -647,7 +647,7 @@ glLightfv:
 .type glLightx, %function
 .p2align 2
 glLightx:
-    svc #0x5a023c
+    svc #0x5a0212
     bx lr
 .size glLightx, . - glLightx
 
@@ -655,7 +655,7 @@ glLightx:
 .type glLightxv, %function
 .p2align 2
 glLightxv:
-    svc #0x5a023d
+    svc #0x5a0213
     bx lr
 .size glLightxv, . - glLightxv
 
@@ -663,7 +663,7 @@ glLightxv:
 .type glLineWidth, %function
 .p2align 2
 glLineWidth:
-    svc #0x5a023e
+    svc #0x5a0058
     bx lr
 .size glLineWidth, . - glLineWidth
 
@@ -671,7 +671,7 @@ glLineWidth:
 .type glLineWidthx, %function
 .p2align 2
 glLineWidthx:
-    svc #0x5a023f
+    svc #0x5a0214
     bx lr
 .size glLineWidthx, . - glLineWidthx
 
@@ -679,7 +679,7 @@ glLineWidthx:
 .type glLoadIdentity, %function
 .p2align 2
 glLoadIdentity:
-    svc #0x5a0240
+    svc #0x5a0215
     bx lr
 .size glLoadIdentity, . - glLoadIdentity
 
@@ -687,7 +687,7 @@ glLoadIdentity:
 .type glLoadMatrixf, %function
 .p2align 2
 glLoadMatrixf:
-    svc #0x5a0241
+    svc #0x5a0216
     bx lr
 .size glLoadMatrixf, . - glLoadMatrixf
 
@@ -695,7 +695,7 @@ glLoadMatrixf:
 .type glLoadMatrixx, %function
 .p2align 2
 glLoadMatrixx:
-    svc #0x5a0242
+    svc #0x5a0217
     bx lr
 .size glLoadMatrixx, . - glLoadMatrixx
 
@@ -703,7 +703,7 @@ glLoadMatrixx:
 .type glLogicOp, %function
 .p2align 2
 glLogicOp:
-    svc #0x5a0243
+    svc #0x5a0218
     bx lr
 .size glLogicOp, . - glLogicOp
 
@@ -711,7 +711,7 @@ glLogicOp:
 .type glMaterialf, %function
 .p2align 2
 glMaterialf:
-    svc #0x5a0244
+    svc #0x5a0219
     bx lr
 .size glMaterialf, . - glMaterialf
 
@@ -719,7 +719,7 @@ glMaterialf:
 .type glMaterialfv, %function
 .p2align 2
 glMaterialfv:
-    svc #0x5a0245
+    svc #0x5a021a
     bx lr
 .size glMaterialfv, . - glMaterialfv
 
@@ -727,7 +727,7 @@ glMaterialfv:
 .type glMaterialx, %function
 .p2align 2
 glMaterialx:
-    svc #0x5a0246
+    svc #0x5a021b
     bx lr
 .size glMaterialx, . - glMaterialx
 
@@ -735,7 +735,7 @@ glMaterialx:
 .type glMaterialxv, %function
 .p2align 2
 glMaterialxv:
-    svc #0x5a0247
+    svc #0x5a021c
     bx lr
 .size glMaterialxv, . - glMaterialxv
 
@@ -743,7 +743,7 @@ glMaterialxv:
 .type glMatrixMode, %function
 .p2align 2
 glMatrixMode:
-    svc #0x5a0248
+    svc #0x5a021d
     bx lr
 .size glMatrixMode, . - glMatrixMode
 
@@ -751,7 +751,7 @@ glMatrixMode:
 .type glMultMatrixf, %function
 .p2align 2
 glMultMatrixf:
-    svc #0x5a0249
+    svc #0x5a021e
     bx lr
 .size glMultMatrixf, . - glMultMatrixf
 
@@ -759,7 +759,7 @@ glMultMatrixf:
 .type glMultMatrixx, %function
 .p2align 2
 glMultMatrixx:
-    svc #0x5a024a
+    svc #0x5a021f
     bx lr
 .size glMultMatrixx, . - glMultMatrixx
 
@@ -767,7 +767,7 @@ glMultMatrixx:
 .type glMultiTexCoord4f, %function
 .p2align 2
 glMultiTexCoord4f:
-    svc #0x5a024b
+    svc #0x5a0220
     bx lr
 .size glMultiTexCoord4f, . - glMultiTexCoord4f
 
@@ -775,7 +775,7 @@ glMultiTexCoord4f:
 .type glMultiTexCoord4x, %function
 .p2align 2
 glMultiTexCoord4x:
-    svc #0x5a024c
+    svc #0x5a0221
     bx lr
 .size glMultiTexCoord4x, . - glMultiTexCoord4x
 
@@ -783,7 +783,7 @@ glMultiTexCoord4x:
 .type glNormal3f, %function
 .p2align 2
 glNormal3f:
-    svc #0x5a024d
+    svc #0x5a0222
     bx lr
 .size glNormal3f, . - glNormal3f
 
@@ -791,7 +791,7 @@ glNormal3f:
 .type glNormal3x, %function
 .p2align 2
 glNormal3x:
-    svc #0x5a024e
+    svc #0x5a0223
     bx lr
 .size glNormal3x, . - glNormal3x
 
@@ -799,7 +799,7 @@ glNormal3x:
 .type glNormalPointer, %function
 .p2align 2
 glNormalPointer:
-    svc #0x5a024f
+    svc #0x5a0224
     bx lr
 .size glNormalPointer, . - glNormalPointer
 
@@ -807,7 +807,7 @@ glNormalPointer:
 .type glOrthof, %function
 .p2align 2
 glOrthof:
-    svc #0x5a0250
+    svc #0x5a0225
     bx lr
 .size glOrthof, . - glOrthof
 
@@ -815,7 +815,7 @@ glOrthof:
 .type glOrthox, %function
 .p2align 2
 glOrthox:
-    svc #0x5a0251
+    svc #0x5a0226
     bx lr
 .size glOrthox, . - glOrthox
 
@@ -823,7 +823,7 @@ glOrthox:
 .type glPixelStorei, %function
 .p2align 2
 glPixelStorei:
-    svc #0x5a0252
+    svc #0x5a005a
     bx lr
 .size glPixelStorei, . - glPixelStorei
 
@@ -831,7 +831,7 @@ glPixelStorei:
 .type glPointParameterf, %function
 .p2align 2
 glPointParameterf:
-    svc #0x5a0253
+    svc #0x5a0227
     bx lr
 .size glPointParameterf, . - glPointParameterf
 
@@ -839,7 +839,7 @@ glPointParameterf:
 .type glPointParameterfv, %function
 .p2align 2
 glPointParameterfv:
-    svc #0x5a0254
+    svc #0x5a0228
     bx lr
 .size glPointParameterfv, . - glPointParameterfv
 
@@ -847,7 +847,7 @@ glPointParameterfv:
 .type glPointParameterx, %function
 .p2align 2
 glPointParameterx:
-    svc #0x5a0255
+    svc #0x5a0229
     bx lr
 .size glPointParameterx, . - glPointParameterx
 
@@ -855,7 +855,7 @@ glPointParameterx:
 .type glPointParameterxv, %function
 .p2align 2
 glPointParameterxv:
-    svc #0x5a0256
+    svc #0x5a022a
     bx lr
 .size glPointParameterxv, . - glPointParameterxv
 
@@ -863,7 +863,7 @@ glPointParameterxv:
 .type glPointSize, %function
 .p2align 2
 glPointSize:
-    svc #0x5a0257
+    svc #0x5a022b
     bx lr
 .size glPointSize, . - glPointSize
 
@@ -871,7 +871,7 @@ glPointSize:
 .type glPointSizePointerOES, %function
 .p2align 2
 glPointSizePointerOES:
-    svc #0x5a0258
+    svc #0x5a022c
     bx lr
 .size glPointSizePointerOES, . - glPointSizePointerOES
 
@@ -879,7 +879,7 @@ glPointSizePointerOES:
 .type glPointSizex, %function
 .p2align 2
 glPointSizex:
-    svc #0x5a0259
+    svc #0x5a022d
     bx lr
 .size glPointSizex, . - glPointSizex
 
@@ -887,7 +887,7 @@ glPointSizex:
 .type glPolygonOffset, %function
 .p2align 2
 glPolygonOffset:
-    svc #0x5a025a
+    svc #0x5a005b
     bx lr
 .size glPolygonOffset, . - glPolygonOffset
 
@@ -895,7 +895,7 @@ glPolygonOffset:
 .type glPolygonOffsetx, %function
 .p2align 2
 glPolygonOffsetx:
-    svc #0x5a025b
+    svc #0x5a022e
     bx lr
 .size glPolygonOffsetx, . - glPolygonOffsetx
 
@@ -903,7 +903,7 @@ glPolygonOffsetx:
 .type glPopMatrix, %function
 .p2align 2
 glPopMatrix:
-    svc #0x5a025c
+    svc #0x5a022f
     bx lr
 .size glPopMatrix, . - glPopMatrix
 
@@ -911,7 +911,7 @@ glPopMatrix:
 .type glPushMatrix, %function
 .p2align 2
 glPushMatrix:
-    svc #0x5a025d
+    svc #0x5a0230
     bx lr
 .size glPushMatrix, . - glPushMatrix
 
@@ -919,7 +919,7 @@ glPushMatrix:
 .type glReadPixels, %function
 .p2align 2
 glReadPixels:
-    svc #0x5a025e
+    svc #0x5a005c
     bx lr
 .size glReadPixels, . - glReadPixels
 
@@ -927,7 +927,7 @@ glReadPixels:
 .type glRotatef, %function
 .p2align 2
 glRotatef:
-    svc #0x5a025f
+    svc #0x5a0231
     bx lr
 .size glRotatef, . - glRotatef
 
@@ -935,7 +935,7 @@ glRotatef:
 .type glRotatex, %function
 .p2align 2
 glRotatex:
-    svc #0x5a0260
+    svc #0x5a0232
     bx lr
 .size glRotatex, . - glRotatex
 
@@ -943,7 +943,7 @@ glRotatex:
 .type glSampleCoverage, %function
 .p2align 2
 glSampleCoverage:
-    svc #0x5a0261
+    svc #0x5a005f
     bx lr
 .size glSampleCoverage, . - glSampleCoverage
 
@@ -951,7 +951,7 @@ glSampleCoverage:
 .type glSampleCoveragex, %function
 .p2align 2
 glSampleCoveragex:
-    svc #0x5a0262
+    svc #0x5a0233
     bx lr
 .size glSampleCoveragex, . - glSampleCoveragex
 
@@ -959,7 +959,7 @@ glSampleCoveragex:
 .type glScalef, %function
 .p2align 2
 glScalef:
-    svc #0x5a0263
+    svc #0x5a0234
     bx lr
 .size glScalef, . - glScalef
 
@@ -967,7 +967,7 @@ glScalef:
 .type glScalex, %function
 .p2align 2
 glScalex:
-    svc #0x5a0264
+    svc #0x5a0235
     bx lr
 .size glScalex, . - glScalex
 
@@ -975,7 +975,7 @@ glScalex:
 .type glScissor, %function
 .p2align 2
 glScissor:
-    svc #0x5a0265
+    svc #0x5a0060
     bx lr
 .size glScissor, . - glScissor
 
@@ -983,7 +983,7 @@ glScissor:
 .type glShadeModel, %function
 .p2align 2
 glShadeModel:
-    svc #0x5a0266
+    svc #0x5a0236
     bx lr
 .size glShadeModel, . - glShadeModel
 
@@ -991,7 +991,7 @@ glShadeModel:
 .type glStencilFunc, %function
 .p2align 2
 glStencilFunc:
-    svc #0x5a0267
+    svc #0x5a0063
     bx lr
 .size glStencilFunc, . - glStencilFunc
 
@@ -999,7 +999,7 @@ glStencilFunc:
 .type glStencilMask, %function
 .p2align 2
 glStencilMask:
-    svc #0x5a0268
+    svc #0x5a0065
     bx lr
 .size glStencilMask, . - glStencilMask
 
@@ -1007,7 +1007,7 @@ glStencilMask:
 .type glStencilOp, %function
 .p2align 2
 glStencilOp:
-    svc #0x5a0269
+    svc #0x5a0067
     bx lr
 .size glStencilOp, . - glStencilOp
 
@@ -1015,7 +1015,7 @@ glStencilOp:
 .type glTexCoordPointer, %function
 .p2align 2
 glTexCoordPointer:
-    svc #0x5a026a
+    svc #0x5a0237
     bx lr
 .size glTexCoordPointer, . - glTexCoordPointer
 
@@ -1023,7 +1023,7 @@ glTexCoordPointer:
 .type glTexEnvf, %function
 .p2align 2
 glTexEnvf:
-    svc #0x5a026b
+    svc #0x5a0238
     bx lr
 .size glTexEnvf, . - glTexEnvf
 
@@ -1031,7 +1031,7 @@ glTexEnvf:
 .type glTexEnvfv, %function
 .p2align 2
 glTexEnvfv:
-    svc #0x5a026c
+    svc #0x5a0239
     bx lr
 .size glTexEnvfv, . - glTexEnvfv
 
@@ -1039,7 +1039,7 @@ glTexEnvfv:
 .type glTexEnvi, %function
 .p2align 2
 glTexEnvi:
-    svc #0x5a026d
+    svc #0x5a023a
     bx lr
 .size glTexEnvi, . - glTexEnvi
 
@@ -1047,7 +1047,7 @@ glTexEnvi:
 .type glTexEnviv, %function
 .p2align 2
 glTexEnviv:
-    svc #0x5a026e
+    svc #0x5a023b
     bx lr
 .size glTexEnviv, . - glTexEnviv
 
@@ -1055,7 +1055,7 @@ glTexEnviv:
 .type glTexEnvx, %function
 .p2align 2
 glTexEnvx:
-    svc #0x5a026f
+    svc #0x5a023c
     bx lr
 .size glTexEnvx, . - glTexEnvx
 
@@ -1063,7 +1063,7 @@ glTexEnvx:
 .type glTexEnvxv, %function
 .p2align 2
 glTexEnvxv:
-    svc #0x5a0270
+    svc #0x5a023d
     bx lr
 .size glTexEnvxv, . - glTexEnvxv
 
@@ -1071,7 +1071,7 @@ glTexEnvxv:
 .type glTexImage2D, %function
 .p2align 2
 glTexImage2D:
-    svc #0x5a0271
+    svc #0x5a0069
     bx lr
 .size glTexImage2D, . - glTexImage2D
 
@@ -1079,7 +1079,7 @@ glTexImage2D:
 .type glTexParameterf, %function
 .p2align 2
 glTexParameterf:
-    svc #0x5a0272
+    svc #0x5a006a
     bx lr
 .size glTexParameterf, . - glTexParameterf
 
@@ -1087,7 +1087,7 @@ glTexParameterf:
 .type glTexParameterfv, %function
 .p2align 2
 glTexParameterfv:
-    svc #0x5a0273
+    svc #0x5a006b
     bx lr
 .size glTexParameterfv, . - glTexParameterfv
 
@@ -1095,7 +1095,7 @@ glTexParameterfv:
 .type glTexParameteri, %function
 .p2align 2
 glTexParameteri:
-    svc #0x5a0274
+    svc #0x5a006c
     bx lr
 .size glTexParameteri, . - glTexParameteri
 
@@ -1103,7 +1103,7 @@ glTexParameteri:
 .type glTexParameteriv, %function
 .p2align 2
 glTexParameteriv:
-    svc #0x5a0275
+    svc #0x5a006d
     bx lr
 .size glTexParameteriv, . - glTexParameteriv
 
@@ -1111,7 +1111,7 @@ glTexParameteriv:
 .type glTexParameterx, %function
 .p2align 2
 glTexParameterx:
-    svc #0x5a0276
+    svc #0x5a023e
     bx lr
 .size glTexParameterx, . - glTexParameterx
 
@@ -1119,7 +1119,7 @@ glTexParameterx:
 .type glTexParameterxv, %function
 .p2align 2
 glTexParameterxv:
-    svc #0x5a0277
+    svc #0x5a023f
     bx lr
 .size glTexParameterxv, . - glTexParameterxv
 
@@ -1127,7 +1127,7 @@ glTexParameterxv:
 .type glTexSubImage2D, %function
 .p2align 2
 glTexSubImage2D:
-    svc #0x5a0278
+    svc #0x5a006e
     bx lr
 .size glTexSubImage2D, . - glTexSubImage2D
 
@@ -1135,7 +1135,7 @@ glTexSubImage2D:
 .type glTranslatef, %function
 .p2align 2
 glTranslatef:
-    svc #0x5a0279
+    svc #0x5a0240
     bx lr
 .size glTranslatef, . - glTranslatef
 
@@ -1143,7 +1143,7 @@ glTranslatef:
 .type glTranslatex, %function
 .p2align 2
 glTranslatex:
-    svc #0x5a027a
+    svc #0x5a0241
     bx lr
 .size glTranslatex, . - glTranslatex
 
@@ -1151,7 +1151,7 @@ glTranslatex:
 .type glVertexPointer, %function
 .p2align 2
 glVertexPointer:
-    svc #0x5a027b
+    svc #0x5a0242
     bx lr
 .size glVertexPointer, . - glVertexPointer
 
@@ -1159,6 +1159,6 @@ glVertexPointer:
 .type glViewport, %function
 .p2align 2
 glViewport:
-    svc #0x5a027c
+    svc #0x5a008d
     bx lr
 .size glViewport, . - glViewport

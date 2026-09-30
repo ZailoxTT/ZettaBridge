@@ -312,11 +312,17 @@ def checked_surface():
     # Built from every stub library gen_stubs.py knows, so adding a library (libEGL, the
     # ANativeWindow_* names) does not break this check. What matters here is that the GLES rows
     # still start at 0 and keep their order.
+    # A name two libraries both export is one host call with one index (GLES 1 shares most of its
+    # entry points with GLES 2), so it appears once here, under the library that introduced it.
     expected_rows = []
     index = 0
+    assigned = set()
     for lib, source in gen_stubs.LIBRARIES:
         for name in source():
+            if name in assigned:
+                continue
             expected_rows.append((index, lib + ".so", name))
+            assigned.add(name)
             index += 1
     actual_rows = committed_hostcalls()
     if actual_rows != expected_rows:
