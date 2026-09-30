@@ -153,8 +153,12 @@ bool open_worth_watching(const char* path) {
     auto ends_with = [&](std::string_view suffix) {
         return name.size() >= suffix.size() && name.compare(name.size() - suffix.size(), suffix.size(), suffix) == 0;
     };
+    // An engine that keeps its data inside an archive lives or dies by opening the right one:
+    // Unity reads its own APK, and which APK it was handed is not visible anywhere else.
     return ends_with(".so") || ends_with(".dat") || ends_with(".bin") || ends_with(".ttf") ||
-           ends_with(".otf") || ends_with(".ttc") || ends_with("fonts.xml");
+           ends_with(".otf") || ends_with(".ttc") || ends_with("fonts.xml") || ends_with(".apk") ||
+           ends_with(".obb") || ends_with(".zip") || ends_with(".jar") || ends_with(".assets") ||
+           ends_with(".resS") || ends_with(".resource");
 }
 
 // Records an openat() of a watched path in the runtime report. Only called after a matching
