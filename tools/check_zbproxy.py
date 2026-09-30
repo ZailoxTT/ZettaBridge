@@ -4,7 +4,8 @@
 The proxy is copied once per arm32 guest library and loaded by ART, so it must stay a
 tiny standalone library:
   - ELF64 little-endian AArch64 shared object;
-  - the only exported defined dynamic symbol is the function JNI_OnLoad;
+  - the only exported defined dynamic symbols are the functions JNI_OnLoad and
+    ANativeActivity_onCreate, the two entry points Android looks up in a plugin library;
   - DT_NEEDED names only allowed system libraries (never libzbridge.so or libc++_shared.so);
   - the ZBridge class, method name and descriptor strings it calls are present.
 
@@ -112,10 +113,14 @@ def check(data):
         if visibility not in (STV_DEFAULT, STV_PROTECTED):
             continue
         exports[c_string(sym_strings, st_name)] = sym_type
-    if set(exports) != {"JNI_OnLoad"}:
-        errors.append("exports must be exactly JNI_OnLoad, got: %s" % ", ".join(sorted(exports)))
-    elif exports["JNI_OnLoad"] != STT_FUNC:
-        errors.append("JNI_OnLoad is not a function")
+    expected = {"JNI_OnLoad", "ANativeActivity_onCreate"}
+    if set(exports) != expected:
+        errors.append("exports must be exactly %s, got: %s" %
+                      (", ".join(sorted(expected)), ", ".join(sorted(exports))))
+    else:
+        for name in sorted(expected):
+            if exports[name] != STT_FUNC:
+                errors.append("%s is not a function" % name)
 
     for text in REQUIRED_STRINGS:
         if text + b"\0" not in data:

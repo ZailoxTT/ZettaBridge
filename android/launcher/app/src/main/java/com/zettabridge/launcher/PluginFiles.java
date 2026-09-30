@@ -112,7 +112,11 @@ final class PluginFiles {
         if (!proxyTemplate.isFile()) throw new IOException("missing proxy template " + proxyTemplate);
         if (!proxyDir.isDirectory() && !proxyDir.mkdirs()) throw new IOException("cannot create " + proxyDir);
         File proxy = new File(proxyDir, fileName);
-        if (proxy.isFile()) return proxy;
+        // A copy older than the template is from a previous version of the launcher, and it is
+        // missing whatever that version's proxy could not do: an app updated after the proxy grew
+        // ANativeActivity_onCreate would keep failing with "undefined symbol" forever.
+        if (proxy.isFile() && proxy.lastModified() >= proxyTemplate.lastModified()) return proxy;
+        if (proxy.isFile() && !proxy.delete()) throw new IOException("cannot replace the stale proxy " + proxy);
         if (proxy.exists()) throw new IOException("proxy path is not a file: " + proxy);
 
         File temporary = Files.createTempFile(proxyDir.toPath(), "." + fileName + ".", ".tmp").toFile();
