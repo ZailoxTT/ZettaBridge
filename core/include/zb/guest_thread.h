@@ -77,6 +77,8 @@ public:
 
     // Runs until a callback stops the JIT, or until post_signal() interrupts it (Interrupted).
     Stop run();
+    // Turns a translator failure into a stop the callers already handle; see the definition.
+    Stop translator_gave_up(const char* reason);
     // Runs one nested guest function. The stopped CPU state is restored on every return path.
     // The handler runs outside Dynarmic and returns true to resume or false to fail the call.
     std::optional<GuestResult> call(std::uint32_t target, const GuestCall& args,

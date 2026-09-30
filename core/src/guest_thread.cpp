@@ -12,7 +12,10 @@
 #include <dynarmic/interface/halt_reason.h>
 
 #include "zb/cp15.h"
+#include <cstdio>
+
 #include "zb/log.h"
+#include "zb/runtime_report.h"
 
 namespace zb {
 
@@ -87,10 +90,35 @@ void GuestThread::set_cpsr(std::uint32_t value) {
     jit_->SetCpsr(value);
 }
 
+// The translator throws for an instruction its backend cannot emit, and that throw crosses every
+// entry into translated code: the run loop, a Java-to-guest native call, a nested guest call. It
+// is caught here, at the one place they all share, and turned into the same stop a guest fault
+// produces, so the caller unwinds normally and the report names the program counter instead of
+// the process dying with "terminating".
+Stop GuestThread::translator_gave_up(const char* reason) {
+    const std::uint32_t pc = regs()[15];
+    char detail[128];
+    std::snprintf(detail, sizeof detail, "pc 0x%08x: %s", pc, reason != nullptr ? reason : "unknown");
+    log("the translator gave up at %s", detail);
+    runtime_report().note_jni_detail("translator-gave-up", detail, true);
+    Stop stop;
+    stop.kind = StopKind::Exception;
+    stop.exception = Dynarmic::A32::Exception::UndefinedInstruction;
+    stop.pc = pc;
+    return stop;
+}
+
 Stop GuestThread::run() {
     pending_ = Stop{};
     for (;;) {
-        const Dynarmic::HaltReason reason = jit_->Run();
+        Dynarmic::HaltReason reason{};
+        try {
+            reason = jit_->Run();
+        } catch (const std::exception& failure) {
+            return translator_gave_up(failure.what());
+        } catch (...) {
+            return translator_gave_up(nullptr);
+        }
         jit_->ClearHalt(kStopHalt | kMemoryAbortHalt);
         if (pending_.kind == StopKind::None && Dynarmic::Has(reason, kInterruptHalt)) {
             jit_->ClearHalt(kInterruptHalt);
