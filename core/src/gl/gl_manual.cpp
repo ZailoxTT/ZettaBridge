@@ -452,6 +452,9 @@ std::optional<std::uint64_t> gl_pixel_bytes(GLenum format, GLenum type, GLsizei 
         case 0x1402:  // GL_SHORT
         case 0x1403:  // GL_UNSIGNED_SHORT
         case 0x140B:  // GL_HALF_FLOAT
+        // OES_texture_half_float gave the same type a different number, and engines still use it:
+        // Unity 4.5 probes for half-float support by uploading an 8x8 texture with it.
+        case 0x8D61:  // GL_HALF_FLOAT_OES
             component_bytes = 2;
             break;
         case 0x1404:  // GL_INT
