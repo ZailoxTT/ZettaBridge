@@ -1147,6 +1147,37 @@ const char* syscall_name(std::uint32_t nr) {
     return "?";
 }
 
+// Which interrupted syscalls the kernel restarts after an SA_RESTART handler. It does not restart
+// the ones that wait until a deadline: restarting those would start the whole wait again, and a
+// thread signalled often enough would never get past its sleep. Those report EINTR and the guest
+// is expected to work out how much of its wait is left.
+bool restartable_syscall(std::uint32_t nr, const std::uint32_t* args) {
+    switch (nr) {
+    case NR_nanosleep:
+    case NR_clock_nanosleep:
+    case NR_clock_nanosleep_time64:
+    case NR_poll:
+    case NR_ppoll:
+    case NR_ppoll_time64:
+    case NR_epoll_wait:
+    case NR_epoll_pwait:
+    case NR_pselect6:
+    case NR_pselect6_time64:
+    case NR_rt_sigtimedwait:
+    case NR_rt_sigtimedwait_time64:
+    case NR_rt_sigsuspend:
+    case NR_sigsuspend:
+        return false;
+    case NR_futex:
+    case NR_futex_time64:
+        // The same rule inside one call: a futex wait with a deadline is not restarted, one
+        // without is. sem_wait uses the second form, which is what Unity was failing on.
+        return args[3] == 0;
+    default:
+        return true;
+    }
+}
+
 bool handle_syscall(Process& proc, GuestThread& thread) {
     auto& regs = thread.regs();
     Ctx c{proc, thread, proc.memory(), {regs[0], regs[1], regs[2], regs[3], regs[4], regs[5]}};
@@ -1677,7 +1708,7 @@ bool handle_syscall(Process& proc, GuestThread& thread) {
     if (c.stop) return false;
     // The pc of the svc itself: the stop recorded the instruction after it, and Thumb svc is two
     // bytes where ARM is four.
-    thread.syscall_restartable = res == -EINTR;
+    thread.syscall_restartable = res == -EINTR && restartable_syscall(nr, c.a);
     if (thread.syscall_restartable) {
         const bool thumb = (thread.cpsr() & 0x20u) != 0;
         thread.restart_pc = regs[15] - (thumb ? 2u : 4u);
