@@ -84,6 +84,11 @@ private:
         std::uint64_t real_looper = 0;
         std::int32_t ident = 0;
         std::uint32_t data = 0;
+        // Set when a poll reported this queue as ready, cleared when the guest takes an event
+        // from it. Without it a guest that polls in a loop is told "input ready" on every pass
+        // and spins: 124583 idents against 903 events taken, with the game hung and the audio
+        // thread still running.
+        bool announced = false;
     };
     std::unordered_map<std::uint32_t, Attachment> attachments_;  // by queue handle
     std::size_t rejections_ = 0;

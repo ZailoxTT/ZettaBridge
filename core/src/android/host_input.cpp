@@ -100,9 +100,16 @@ std::optional<HostInput::Ready> HostInput::ready_on(std::uint64_t real_looper) {
     // The backend is asked outside the lock: it is the platform, and nothing guest-facing should
     // wait on this unit's own mutex.
     for (const auto& [handle, attachment] : candidates) {
+        if (attachment.announced) continue;  // already reported; waiting for the guest to take it
         void* queue = queue_for(handle);
         if (queue == nullptr) continue;
-        if (backend_.queue_has_events(queue) > 0) return Ready{attachment.ident, attachment.data};
+        if (backend_.queue_has_events(queue) <= 0) continue;
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            const auto entry = attachments_.find(handle);
+            if (entry != attachments_.end()) entry->second.announced = true;
+        }
+        return Ready{attachment.ident, attachment.data};
     }
     return std::nullopt;
 }
@@ -148,6 +155,8 @@ bool HostInput::handle_host_call(std::uint32_t index, GuestThread& thread) {
             std::lock_guard<std::mutex> lock(mutex_);
             live_events_[handle] = regs[0];
             ++events_gotten_;
+            const auto attachment = attachments_.find(regs[0]);
+            if (attachment != attachments_.end()) attachment->second.announced = false;
         }
         std::memcpy(out, &handle, sizeof handle);
         regs[0] = static_cast<std::uint32_t>(status);
