@@ -191,6 +191,28 @@ bool Process::deliver_fault(GuestThread& thread, const Stop& stop) {
         info.fields[0] = stop.fault_addr;
     } else {
         const bool breakpoint = stop.exception == Dynarmic::A32::Exception::Breakpoint;
+        if (!breakpoint) {
+            // An instruction the translator does not know. The guest often has a handler for it
+            // (mono turns it into an ExecutionEngineException and aborts later), so without this
+            // the only trace left is an abort far away from the cause. The bytes are what a new
+            // decoder entry is written from.
+            static std::atomic<unsigned> seen{0};
+            const unsigned number = seen.fetch_add(1) + 1;
+            if (number <= 4) {
+                std::uint32_t word = 0;
+                if (const std::uint8_t* code = mem_.host_ptr(stop.pc, 4, kPageRead)) {
+                    std::memcpy(&word, code, sizeof word);
+                }
+                char detail[192];
+                std::snprintf(detail, sizeof detail, "pc 0x%08x %s bytes %08x%s", stop.pc,
+                              describe_address(stop.pc).c_str(), word,
+                              (thread.cpsr() & 0x20u) != 0 ? " thumb" : " arm");
+                log("undefined instruction: %s", detail);
+                runtime_report().note_jni_detail("undefined-instruction-" + std::to_string(number), detail,
+                                                 true);
+            }
+            runtime_report().note_jni_detail("undefined-instructions", std::to_string(number), true);
+        }
         info.si_signo = breakpoint ? SIGTRAP : SIGILL;
         info.si_code = breakpoint ? static_cast<std::int32_t>(TRAP_BRKPT) : static_cast<std::int32_t>(ILL_ILLOPC);
         info.fields[0] = stop.pc;
