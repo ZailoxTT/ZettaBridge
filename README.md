@@ -73,6 +73,10 @@ ZettaBridge launcher (arm64 app)
 - **Games running on the phone.**
   - *Orange Roulette* (2014, Haxe/OpenFL): menus and gameplay, with sound.
   - *Flappy Bird* (AndEngine): playable.
+  - **Unity games through `NativeActivity`** (October 2026): *Lane Racer* and
+    *Thomas Was Alone* (Unity 4.5, Mono) start, render and are playable with touch controls.
+    Both still end the process after a while, which is being worked on; once that is fixed this
+    goes into a release.
   - A modern Flutter app starts, runs its Dart code, presents frames and takes touch input,
     though rendering is not yet complete.
 
