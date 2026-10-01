@@ -165,7 +165,17 @@ bool Process::dispatch_pending_signals(GuestThread& thread) {
     g::siginfo32 info;
     while (thread.take_signal(thread.sigmask, info)) {
         if (!deliver_signal(thread, info, false)) {
-            log("guest terminated by signal %d", info.si_signo);
+            // A guest that calls abort() (an assertion inside its engine, most of the time) ends
+            // here, and the exit status alone says nothing about where. The program counter and
+            // the library it falls in are what can be acted on, and this ROM shows no logcat of
+            // ours, so the report is the only place they survive.
+            const std::uint32_t pc = thread.regs()[15];
+            const std::string where = describe_address(pc);
+            char detail[192];
+            std::snprintf(detail, sizeof detail, "guest terminated by signal %d at pc 0x%08x %s",
+                          info.si_signo, pc, where.c_str());
+            log("%s", detail);
+            runtime_report().note_guest_exit(detail);
             request_exit(128 + info.si_signo);
             return false;
         }
