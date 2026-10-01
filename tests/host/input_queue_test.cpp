@@ -108,8 +108,12 @@ int main() {
     backend.pre_dispatch_result = 0;
 
     // Attaching ties the queue to this thread's real looper; detaching undoes it.
-    CHECK(call_input(input, thread, zb::ZB_INPUT_HC_AInputQueue_attachLooper, {queue, 0x1234, 42}) == 0);
+    // The guest's own data word travels with the registration and comes back from the poll, so
+    // the guest recognizes its source; nothing of the host crosses.
+    CHECK(call_input(input, thread, zb::ZB_INPUT_HC_AInputQueue_attachLooper,
+                     {queue, 0x1234, 42, 0, 0xCAFE}) == 0);
     CHECK(backend.attached && backend.attached_ident == 42);
+    CHECK(backend.attached_data == reinterpret_cast<void*>(static_cast<std::uintptr_t>(0xCAFE)));
     CHECK(call_input(input, thread, zb::ZB_INPUT_HC_AInputQueue_detachLooper, {queue}) == 0);
     CHECK(!backend.attached);
 

@@ -313,6 +313,23 @@ void run_real_looper() {
     CHECK(backend.polls() == 2 && backend.last_timeout() == -1);
     CHECK(invoked.size() == 1 && invoked[0] == 0x4000);
 
+    // What the ready registration carried must reach the guest: a source attached by ident is
+    // recognized only by the data that comes back, and dropping it left Unity polling forever
+    // while the framework waited for the touch it had already delivered.
+    backend.ready_fd = 11;
+    backend.ready_events = 1;
+    backend.ready_data = reinterpret_cast<void*>(static_cast<std::uintptr_t>(0xBEEF));
+    backend.poll_result = 3;  // an ident registration
+    guest_u32(runtime.memory(), kGuestPage + 0x40, 0);
+    guest_u32(runtime.memory(), kGuestPage + 0x44, 0);
+    guest_u32(runtime.memory(), kGuestPage + 0x48, 0);
+    CHECK(static_cast<std::int32_t>(call(looper, guest, zb::ZB_COMPAT_HC_ALooper_pollOnce, 0,
+                                         kGuestPage + 0x40, kGuestPage + 0x44, kGuestPage + 0x48)) == 3);
+    CHECK(guest_u32(runtime.memory(), kGuestPage + 0x40) == 11);
+    CHECK(guest_u32(runtime.memory(), kGuestPage + 0x44) == 1);
+    CHECK(guest_u32(runtime.memory(), kGuestPage + 0x48) == 0xBEEF);
+    backend.poll_result = -3;
+
     // wake and removeFd reach the real looper too.
     CHECK(call(looper, guest, zb::ZB_COMPAT_HC_ALooper_wake, handle) == 0);
     CHECK(backend.wakes() == 1);

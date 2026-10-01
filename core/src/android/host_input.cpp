@@ -196,7 +196,17 @@ bool HostInput::handle_host_call(std::uint32_t index, GuestThread& thread) {
             log("AInputQueue_attachLooper: this thread has no real looper, so the queue will not "
                 "deliver");
         }
-        backend_.queue_attach_looper(queue, static_cast<std::int32_t>(regs[2]));
+        if (regs[3] != 0) {
+            // The guest wants its own callback run by the looper. Unity's glue passes none and
+            // polls for the ident instead, which is the path served here; a callback would need
+            // the looper's nested re-entry and is recorded rather than silently ignored.
+            runtime_report().note_jni_detail("input-attach", "guest callback is not served yet", true);
+        }
+        // The guest's data travels as an opaque value and comes back from the poll unchanged, so
+        // the guest recognizes its own source. Nothing of the host crosses here.
+        backend_.queue_attach_looper(queue, static_cast<std::int32_t>(regs[2]),
+                                     reinterpret_cast<void*>(static_cast<std::uintptr_t>(regs[4])));
+        runtime_report().note_jni_detail("input-attach", "ident " + std::to_string(regs[2]), true);
         regs[0] = 0;
         return true;
     }

@@ -33,10 +33,12 @@ public:
 
     // The queue goes to this thread's own looper: a host AInputQueue has no descriptor we could
     // poll ourselves. The thread must already have one (HostLooper's real-looper mode).
-    void queue_attach_looper(void* queue, std::int32_t ident) override {
+    void queue_attach_looper(void* queue, std::int32_t ident, void* data) override {
         ALooper* looper = ALooper_forThread();
         if (looper == nullptr) return;
-        AInputQueue_attachLooper(static_cast<AInputQueue*>(queue), looper, ident, nullptr, nullptr);
+        // No callback: the guest polls for the ident itself, which is what the NDK's own glue
+        // does. `data` is the guest's value and comes back out of ALooper_pollOnce unchanged.
+        AInputQueue_attachLooper(static_cast<AInputQueue*>(queue), looper, ident, nullptr, data);
     }
 
     void queue_detach_looper(void* queue) override {

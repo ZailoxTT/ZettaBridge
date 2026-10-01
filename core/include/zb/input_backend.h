@@ -23,7 +23,9 @@ public:
     // Attaches the queue to the real looper of the calling host thread, or detaches it.
     // The looper is the thread's own: a host AInputQueue has no descriptor we could poll
     // ourselves, so the queue is given to a real Android looper on that same thread.
-    virtual void queue_attach_looper(void* queue, std::int32_t ident) = 0;
+    // `data` is the guest's own value, round-tripped: the looper hands it back from
+    // poll, and the guest reads its own word again. No host pointer is involved.
+    virtual void queue_attach_looper(void* queue, std::int32_t ident, void* data) = 0;
     virtual void queue_detach_looper(void* queue) = 0;
 
     // Generated accessors.

@@ -45,7 +45,10 @@ public:
     // dispatches whatever that looper holds, our registrations among them. Only a guest thread
     // that acquired a real looper of its own calls this; a borrower returns to Java and lets
     // Looper.loop() do the polling. Returns the NDK result.
-    virtual int poll_once(int timeout_millis) = 0;
+    // out_fd, out_events and out_data receive what the registration that woke the poll carried,
+    // the way ALooper_pollOnce fills them. A guest that registered by ident reads its own data
+    // back from here; without them it cannot tell which source is ready.
+    virtual int poll_once(int timeout_millis, int* out_fd, int* out_events, void** out_data) = 0;
 };
 
 }  // namespace zb

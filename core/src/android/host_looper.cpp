@@ -598,6 +598,13 @@ struct HostLooper::Impl {
         report_wakes_line();
     }
 
+    // Writes one 32-bit value into guest memory, or does nothing when the address is unusable:
+    // a guest that passed a bad pointer gets no write, never a fault inside the poll.
+    void write_guest_word(std::uint32_t address, std::uint32_t value) {
+        std::uint8_t* memory = runtime.memory().host_ptr(address, 4, kPageRead | kPageWrite);
+        if (memory != nullptr) std::memcpy(memory, &value, sizeof value);
+    }
+
     int poll_once(GuestThread& thread, int timeout, std::uint32_t out_fd,
                   std::uint32_t out_events, std::uint32_t out_data) {
         std::uint32_t looper_handle = 0;
@@ -639,11 +646,27 @@ struct HostLooper::Impl {
         };
 
         if (real_backed) {
-            // This thread owns a real Android looper, and every registration was handed to it,
-            // so the real pollOnce is the poll: it blocks and dispatches, ours included. The out
-            // parameters stay unserved here, because an input queue is a callback registration
-            // and that is what this mode exists for.
-            return finish(backend->poll_once(timeout));
+            // This thread owns a real Android looper, and every registration was handed to it, so
+            // the real pollOnce is the poll: it blocks and dispatches, ours included.
+            //
+            // Its out parameters have to reach the guest. An input queue attaches by ident with
+            // no callback (the NDK's own glue does it that way, and so does Unity), and a guest
+            // that polls learns which source is ready only from them: the ident comes back as the
+            // result, its own data word through out_data. Dropping them left the guest polling
+            // forever while the framework waited five seconds for the touch it had delivered.
+            int ready_fd = -1;
+            int ready_events = 0;
+            void* ready_data = nullptr;
+            const int result = backend->poll_once(timeout, &ready_fd, &ready_events, &ready_data);
+            if (result >= 0) {
+                if (out_fd != 0) write_guest_word(out_fd, static_cast<std::uint32_t>(ready_fd));
+                if (out_events != 0) write_guest_word(out_events, static_cast<std::uint32_t>(ready_events));
+                if (out_data != 0) {
+                    write_guest_word(out_data,
+                                     static_cast<std::uint32_t>(reinterpret_cast<std::uintptr_t>(ready_data)));
+                }
+            }
+            return finish(result);
         }
 
         if (attached) {

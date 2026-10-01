@@ -41,9 +41,12 @@ public:
 
     // Stands in for the real ALooper_pollOnce: dispatches the fds the test marked ready, then
     // answers with what the NDK would. Only a thread that acquired a real looper polls this way.
-    int poll_once(int timeout_millis) override {
+    int poll_once(int timeout_millis, int* out_fd, int* out_events, void** out_data) override {
         ++polls_;
         last_timeout_ = timeout_millis;
+        if (out_fd != nullptr) *out_fd = ready_fd;
+        if (out_events != nullptr) *out_events = ready_events;
+        if (out_data != nullptr) *out_data = ready_data;
         if (ready_.empty()) return poll_result;
         int result = -3;  // ALOOPER_POLL_TIMEOUT until something is dispatched
         for (int fd : ready_) {
@@ -60,6 +63,10 @@ public:
     int polls() const { return polls_; }
     int last_timeout() const { return last_timeout_; }
     int poll_result = -3;
+    // What a registration hands back from a poll, as ALooper_pollOnce fills its out parameters.
+    int ready_fd = -1;
+    int ready_events = 0;
+    void* ready_data = nullptr;
 
     int remove_fd(std::uint64_t looper, int fd) override {
         if (looper != current_) return -1;
