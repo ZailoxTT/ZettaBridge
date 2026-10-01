@@ -203,10 +203,15 @@ bool Process::deliver_fault(GuestThread& thread, const Stop& stop) {
                 if (const std::uint8_t* code = mem_.host_ptr(stop.pc, 4, kPageRead)) {
                     std::memcpy(&word, code, sizeof word);
                 }
-                char detail[192];
-                std::snprintf(detail, sizeof detail, "pc 0x%08x %s bytes %08x%s", stop.pc,
-                              describe_address(stop.pc).c_str(), word,
-                              (thread.cpsr() & 0x20u) != 0 ? " thumb" : " arm");
+                // The link register names the caller, which is the whole answer when the guest
+                // jumped to an address it was handed: at pc 0 there is nothing to disassemble,
+                // but the instruction after the call is in a library we can name.
+                const std::uint32_t lr = thread.regs()[14];
+                char detail[320];
+                std::snprintf(detail, sizeof detail, "pc 0x%08x %s bytes %08x%s, called from 0x%08x %s",
+                              stop.pc, describe_address(stop.pc).c_str(), word,
+                              (thread.cpsr() & 0x20u) != 0 ? " thumb" : " arm", lr,
+                              describe_address(lr & ~1u).c_str());
                 log("undefined instruction: %s", detail);
                 runtime_report().note_jni_detail("undefined-instruction-" + std::to_string(number), detail,
                                                  true);
