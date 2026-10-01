@@ -11,7 +11,7 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 OUT="$ROOT/build/t6"
 LIB="$ROOT/build/android-arm64/core/libzbridge.so"
 GUEST="$ROOT/build/guest"
-TESTS="hello_static hello_dynamic threads_dynamic kuser_dynamic signals_dynamic syscalls_dynamic log_dynamic cxx_dynamic or_dlopen_dynamic"
+TESTS="hello_static hello_dynamic threads_dynamic kuser_dynamic signals_dynamic sigio_race_dynamic syscalls_dynamic log_dynamic cxx_dynamic or_dlopen_dynamic"
 
 for required in "$LIB" "$ROOT/sysroot/system/bin/linker" "$ROOT/build/or/libApplicationMain.so"; do
     if [ ! -e "$required" ]; then

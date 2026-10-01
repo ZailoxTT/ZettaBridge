@@ -1656,3 +1656,30 @@ file-read/semaphore/futex combination survive this workload. The next useful ste
 same stress shape inside the Android app process, where ART/libsigchain and process-directed host
 signals are present, or add bounded device-report counters for `EINTR -> restartable -> delivered
 with SA_RESTART -> rewound` transitions and compare a short-frame Unity run with a long one.
+
+## 2026-10-01: Android app-process signal race test APK ready
+
+The first option above is wired into the existing T6 harness. `sigio_race_dynamic` is packaged as
+an asset and run in the T6 activity's dedicated `:guest` process, next to ART and libsigchain. The
+T6 Gradle project now consumes `build/t6` directly and uses the same external release-signing file
+as the launcher, so its release APK is installable without copying generated sources into the
+project tree.
+
+Local build verification:
+
+- Android arm64 `zbridge`: PASS;
+- T6 bundle: PASS, and its file list contains the executable and expected output;
+- Gradle `assembleRelease`: PASS;
+- APK Signature Scheme v2 verification: PASS, one signer;
+- APK archive contains `lib/arm64-v8a/libzbridge.so`, `assets/zb/guest/sigio_race_dynamic`, its
+  expected output and `zb-files.txt`.
+
+Ready APK: `android/launcher/app/build/outputs/apk/release/ZBridgeT6-signal-race-release.apk`,
+21,826,717 bytes, SHA-256
+`d85fc2e8638376ea01c46ce8c1b8bdf50fa66eb66511bb042cf9513af54b573e`.
+
+**NEXT/device gate:** install this separate `com.zettabridge.t6` APK and open **ZBridge T6**. Send
+the screen result around `sigio_race_dynamic` (or the last visible line if the `:guest` process
+exits/hangs). `PASS sigio_race_dynamic` means the constructed race also survives the real Android
+process; it still does not exonerate the exact Unity workload, so the following step is bounded
+restart-transition counters in the launcher report rather than another speculative signal fix.
