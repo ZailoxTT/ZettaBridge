@@ -88,6 +88,25 @@ void HostInput::report_queue_state() {
                            " outstanding=" + std::to_string(outstanding), true);
 }
 
+std::optional<HostInput::Ready> HostInput::ready_on(std::uint64_t real_looper) {
+    if (real_looper == 0) return std::nullopt;
+    std::vector<std::pair<std::uint32_t, Attachment>> candidates;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        for (const auto& [handle, attachment] : attachments_) {
+            if (attachment.real_looper == real_looper) candidates.emplace_back(handle, attachment);
+        }
+    }
+    // The backend is asked outside the lock: it is the platform, and nothing guest-facing should
+    // wait on this unit's own mutex.
+    for (const auto& [handle, attachment] : candidates) {
+        void* queue = queue_for(handle);
+        if (queue == nullptr) continue;
+        if (backend_.queue_has_events(queue) > 0) return Ready{attachment.ident, attachment.data};
+    }
+    return std::nullopt;
+}
+
 bool HostInput::reject(const char* function, std::uint32_t handle) {
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -207,6 +226,10 @@ bool HostInput::handle_host_call(std::uint32_t index, GuestThread& thread) {
         // the guest recognizes its own source. Nothing of the host crosses here.
         backend_.queue_attach_looper(queue, static_cast<std::int32_t>(regs[2]),
                                      reinterpret_cast<void*>(static_cast<std::uintptr_t>(regs[4])), real_looper);
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            attachments_[regs[0]] = Attachment{real_looper, static_cast<std::int32_t>(regs[2]), regs[4]};
+        }
         runtime_report().note_jni_detail("input-attach",
                                          "ident " + std::to_string(regs[2]) + " guest-looper 0x" +
                                              std::to_string(regs[1]) + (real_looper != 0 ? " real" : " no real"),
@@ -217,6 +240,10 @@ bool HostInput::handle_host_call(std::uint32_t index, GuestThread& thread) {
     case ZB_INPUT_HC_AInputQueue_detachLooper: {
         void* queue = live_queue(regs[0]);
         if (queue == nullptr) { regs[0] = 0; return reject("AInputQueue_detachLooper", regs[0]); }
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            attachments_.erase(regs[0]);
+        }
         backend_.queue_detach_looper(queue);
         regs[0] = 0;
         return true;

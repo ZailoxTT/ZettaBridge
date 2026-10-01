@@ -129,6 +129,8 @@ struct HostLooper::Impl {
         std::atomic<bool> active{true};
     };
 
+    InputProbe input_probe;
+
     Impl(LibraryRuntime& runtime_, AndroidLooperBackend* backend_, GuestInvoker invoker_,
          BorrowerProbe borrower_probe_)
         : runtime(runtime_), backend(backend_), invoker(std::move(invoker_)),
@@ -671,7 +673,22 @@ struct HostLooper::Impl {
             int ready_fd = -1;
             int ready_events = 0;
             void* ready_data = nullptr;
-            const int result = backend->poll_once(timeout, &ready_fd, &ready_events, &ready_data);
+            int result = backend->poll_once(timeout, &ready_fd, &ready_events, &ready_data);
+            if (result < 0 && input_probe) {
+                // A wake-up with an input queue holding events is that queue reporting itself.
+                std::uint64_t real = 0;
+                {
+                    std::lock_guard<std::mutex> lock(mutex);
+                    const auto looper_it = loopers.find(looper_handle);
+                    if (looper_it != loopers.end()) real = looper_it->second->real;
+                }
+                if (const std::optional<InputReady> ready = input_probe(real)) {
+                    result = ready->ident;
+                    ready_fd = -1;
+                    ready_events = kEventInput;
+                    ready_data = reinterpret_cast<void*>(static_cast<std::uintptr_t>(ready->data));
+                }
+            }
             if (result >= 0) {
                 if (out_fd != 0) write_guest_word(out_fd, static_cast<std::uint32_t>(ready_fd));
                 if (out_events != 0) write_guest_word(out_events, static_cast<std::uint32_t>(ready_events));
@@ -775,6 +792,10 @@ HostLooper::HostLooper(LibraryRuntime& runtime, AndroidLooperBackend* backend, G
                        BorrowerProbe borrower_probe)
     : impl_(std::make_unique<Impl>(runtime, backend, std::move(invoker), std::move(borrower_probe))) {}
 HostLooper::~HostLooper() = default;
+
+void HostLooper::set_input_probe(InputProbe probe) {
+    impl_->input_probe = std::move(probe);
+}
 
 bool HostLooper::ensure_real_looper(GuestThread& thread, std::uint32_t looper_handle, std::uint64_t& real) {
     return impl_->ensure_real_looper(thread, looper_handle, real);

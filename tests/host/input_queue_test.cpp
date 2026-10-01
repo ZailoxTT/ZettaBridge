@@ -37,7 +37,11 @@ int main() {
     zb::LibraryRuntime runtime;
     CHECK(runtime.memory().map_anon(kData, 0x1000, PROT_READ | PROT_WRITE));
     MockInput backend;
-    zb::HostInput input(runtime, backend);
+    zb::HostInput input(runtime, backend,
+                        [](zb::GuestThread&, std::uint32_t, std::uint64_t& real) {
+                            real = 0x5100;  // the real looper the guest's handle resolves to
+                            return true;
+                        });
     Dynarmic::ExclusiveMonitor monitor(1);
     zb::GuestThread thread(runtime.memory(), &monitor, 0, false, zb::kCarrierCodeCacheSize);
 
@@ -114,8 +118,19 @@ int main() {
                      {queue, 0x1234, 42, 0, 0xCAFE}) == 0);
     CHECK(backend.attached && backend.attached_ident == 42);
     CHECK(backend.attached_data == reinterpret_cast<void*>(static_cast<std::uintptr_t>(0xCAFE)));
+    CHECK(backend.attached_looper == 0x5100);
+    // A queue holding events reports itself to the looper it was attached to: an event that came
+    // through Java wakes the looper instead of marking a descriptor, and a guest waiting for its
+    // ident would otherwise wait forever (Unity did, for the five seconds the framework allows).
+    backend.queue_event({});
+    const auto ready = input.ready_on(0x5100);
+    CHECK(ready.has_value() && ready->ident == 42 && ready->data == 0xCAFE);
+    CHECK(!input.ready_on(0x9999).has_value());
+
     CHECK(call_input(input, thread, zb::ZB_INPUT_HC_AInputQueue_detachLooper, {queue}) == 0);
     CHECK(!backend.attached);
+    // Detached: it no longer belongs to that looper.
+    CHECK(!input.ready_on(0x5100).has_value());
 
     // A destroyed queue takes the events the guest never finished, and says how many.
     backend.queue_event({});

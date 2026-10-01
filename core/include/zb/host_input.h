@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <functional>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <unordered_map>
 
@@ -45,6 +46,17 @@ public:
     // The host queue behind a handle, for the glue; nullptr when the handle is not live.
     void* queue_for(std::uint32_t handle) const;
 
+    // What an attached queue reports to the looper it was attached to.
+    struct Ready {
+        std::int32_t ident = 0;
+        std::uint32_t data = 0;
+    };
+    // The queue attached to `real_looper` that has events waiting, if any. An input queue does
+    // not only make a descriptor readable: an event that arrived through Java is put on the
+    // queue and the looper is simply woken, so a guest that waits for its ident would wait
+    // forever. The poll asks this after every wake-up.
+    std::optional<Ready> ready_on(std::uint64_t real_looper);
+
 private:
     const void* live_event(std::uint32_t handle) const;
     void* live_queue(std::uint32_t handle) const;
@@ -63,6 +75,12 @@ private:
     // outstanding events with it instead of leaving handles that point at freed memory.
     std::unordered_map<std::uint32_t, std::uint32_t> live_events_;
     std::string first_rejection_;
+    struct Attachment {
+        std::uint64_t real_looper = 0;
+        std::int32_t ident = 0;
+        std::uint32_t data = 0;
+    };
+    std::unordered_map<std::uint32_t, Attachment> attachments_;  // by queue handle
     std::size_t rejections_ = 0;
     std::size_t events_gotten_ = 0;
     std::size_t events_pre_dispatched_ = 0;

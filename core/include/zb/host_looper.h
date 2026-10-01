@@ -33,6 +33,16 @@ public:
                                                                   const GuestCall& args)>;
     // True when this guest thread is a borrower. The default asks the LibraryRuntime.
     using BorrowerProbe = std::function<bool(const GuestThread& thread)>;
+    // An input queue attached to this real looper that has events waiting: its ident and the
+    // guest data it was registered with. A queue wakes its looper instead of marking a descriptor
+    // when the event came through Java, so a poll that only reports the wake-up leaves the guest
+    // waiting for an ident that never comes.
+    struct InputReady {
+        std::int32_t ident = 0;
+        std::uint32_t data = 0;
+    };
+    using InputProbe = std::function<std::optional<InputReady>(std::uint64_t real_looper)>;
+    void set_input_probe(InputProbe probe);
 
     // backend nullptr (the host build, and any process without an Android looper) keeps every
     // thread on the guest path.
