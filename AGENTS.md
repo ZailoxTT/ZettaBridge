@@ -1779,3 +1779,33 @@ or Lane Racer, tap once, wait for the five-second return, and copy Last run repo
 line is `jni-input-queue`: `get=0` localizes the bug before guest dequeue; `get>finish` proves the
 guest fetched an event but did not return it; balanced `get/finish` moves the investigation below
 the bridge/framework finish boundary. Do not change event ownership until this line is observed.
+
+### Root cause fixed: NativeActivity entered before proxy JNI_OnLoad
+
+The Lane Racer device report had no `jni-input-queue` line: the guest never dequeued an event. Its
+log supplies the earlier cause verbatim: `ANativeActivity_onCreate before JNI_OnLoad: no bridge to
+call`. Android's NativeActivity loader is allowed to invoke the exported activity entry directly;
+the proxy incorrectly assumed ART had already called `JNI_OnLoad`, returned without installing any
+callbacks, and left the first framework MotionEvent unfinished until the five-second ANR. This
+also explains the identical Thomas Was Alone failure.
+
+`libzbproxy.so` now supports both legal orders. In the observed activity-first order it reads the
+VM and current-thread JNIEnv from the stable prefix of the host `ANativeActivity`, identifies its
+own proxy path with `dladdr`, runs the existing `ZBridge.onProxyLoaded` path first, and then calls
+`ZBridge.onNativeActivityCreated` to install callbacks. The previous JNI_OnLoad-first path is
+unchanged. The proxy remains standalone: its NEEDED set is still only liblog/libdl/libc and its
+only exports remain `JNI_OnLoad` and `ANativeActivity_onCreate`.
+
+The fake-JNI test observed RED when `ANativeActivity_onCreate` was called before `JNI_OnLoad` and
+now verifies guest load followed by activity creation, while retaining all old order/error cases.
+Fresh verification: host 54/54, Android `zbridge`/`zbproxy`, proxy structure check, launcher bundle
+and signed release build pass. Both packaged native-library hashes match the Android build; APK
+Signature Scheme v2 verifies with one signer.
+
+Ready launcher: `android/launcher/app/build/outputs/apk/release/app-release.apk`, 6,718,276 bytes,
+SHA-256 `3db0911d8020fff60fa216019077a4ddd7e85cac49401c839896044e51b3b9db`.
+
+**NEXT/device gate:** install, force-stop, launch Thomas Was Alone or Lane Racer and tap. The
+five-second ANR should be gone and `jni-input-queue` should show balanced `get` and `finish` after
+the touch. If the activity instead fails during creation, preserve logcat plus Last run report;
+the likely boundary would then be class lookup during the activity-first bootstrap.

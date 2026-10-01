@@ -34,8 +34,8 @@ static const char kMethodSignature[] = "(Ljava/lang/String;)I";
 static const char kActivityMethodName[] = "onNativeActivityCreated";
 static const char kActivityMethodSignature[] = "(JJJLjava/lang/String;)Z";
 
-// Captured in JNI_OnLoad, because ANativeActivity_onCreate arrives without either. The path is
-// copied: dladdr's string belongs to the loader.
+// Usually captured in JNI_OnLoad. NativeActivity may enter first, in which case its structure
+// supplies the VM and current-thread JNIEnv. The path is copied: dladdr owns its string.
 static JavaVM* g_vm;
 static char g_proxy_path[1024];
 
@@ -56,51 +56,40 @@ static int supported_version(jint version) {
     return version == JNI_VERSION_1_2 || version == JNI_VERSION_1_4 || version == JNI_VERSION_1_6;
 }
 
-JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
-    (void)reserved;
-
+static int proxy_path(char* out, size_t size) {
     Dl_info info;
     if (dladdr((void*)&JNI_OnLoad, &info) == 0 || info.dli_fname == NULL || info.dli_fname[0] != '/') {
         log_error("cannot find the proxy path with dladdr");
-        return JNI_ERR;
+        return 0;
     }
-    const char* proxy_path = info.dli_fname;
+    strncpy(out, info.dli_fname, size - 1);
+    out[size - 1] = 0;
+    return 1;
+}
 
-    JNIEnv* env = NULL;
-    if ((*vm)->GetEnv(vm, (void**)&env, JNI_VERSION_1_6) != JNI_OK || env == NULL) {
-        log_error("%s: GetEnv(JNI_VERSION_1_6) failed", proxy_path);
-        return JNI_ERR;
-    }
-    if ((*env)->ExceptionCheck(env)) {
-        log_error("%s: exception already pending in JNI_OnLoad", proxy_path);
-        return JNI_ERR;
-    }
-
+static jint notify_proxy_loaded(JNIEnv* env, const char* path) {
     jclass bridge = (*env)->FindClass(env, kBridgeClass);
     if (bridge == NULL) {
-        log_error("%s: class %s not found", proxy_path, kBridgeClass);
+        log_error("%s: class %s not found", path, kBridgeClass);
         return JNI_ERR;
     }
 
-    g_vm = vm;
-    strncpy(g_proxy_path, proxy_path, sizeof g_proxy_path - 1);
-
     jint result = JNI_ERR;
-    jstring path = NULL;
+    jstring jpath = NULL;
     jmethodID method = (*env)->GetStaticMethodID(env, bridge, kMethodName, kMethodSignature);
     if (method == NULL) {
-        log_error("%s: method %s%s not found", proxy_path, kMethodName, kMethodSignature);
+        log_error("%s: method %s%s not found", path, kMethodName, kMethodSignature);
         goto done;
     }
-    path = (*env)->NewStringUTF(env, proxy_path);
-    if (path == NULL) {
-        log_error("%s: NewStringUTF failed", proxy_path);
+    jpath = (*env)->NewStringUTF(env, path);
+    if (jpath == NULL) {
+        log_error("%s: NewStringUTF failed", path);
         goto done;
     }
 
-    jint reported = (*env)->CallStaticIntMethod(env, bridge, method, path);
+    jint reported = (*env)->CallStaticIntMethod(env, bridge, method, jpath);
     if ((*env)->ExceptionCheck(env)) {
-        log_error("%s: %s threw", proxy_path, kMethodName);
+        log_error("%s: %s threw", path, kMethodName);
         goto done;
     }
     if (reported == 0) {
@@ -108,15 +97,34 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
     } else if (supported_version(reported)) {
         result = reported;
     } else {
-        log_error("%s: %s returned unsupported JNI version 0x%08x", proxy_path, kMethodName,
+        log_error("%s: %s returned unsupported JNI version 0x%08x", path, kMethodName,
                   (unsigned)reported);
     }
 
 done:
     // DeleteLocalRef is one of the calls JNI allows with an exception pending.
-    if (path != NULL) (*env)->DeleteLocalRef(env, path);
+    if (jpath != NULL) (*env)->DeleteLocalRef(env, jpath);
     (*env)->DeleteLocalRef(env, bridge);
     return result;
+}
+
+JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
+    (void)reserved;
+
+    if (!proxy_path(g_proxy_path, sizeof g_proxy_path)) return JNI_ERR;
+
+    JNIEnv* env = NULL;
+    if ((*vm)->GetEnv(vm, (void**)&env, JNI_VERSION_1_6) != JNI_OK || env == NULL) {
+        log_error("%s: GetEnv(JNI_VERSION_1_6) failed", g_proxy_path);
+        return JNI_ERR;
+    }
+    if ((*env)->ExceptionCheck(env)) {
+        log_error("%s: exception already pending in JNI_OnLoad", g_proxy_path);
+        return JNI_ERR;
+    }
+
+    g_vm = vm;
+    return notify_proxy_loaded(env, g_proxy_path);
 }
 
 // The one export android.app.NativeActivity looks for. The framework loads the library the
@@ -128,14 +136,37 @@ done:
 // activity the guest sees. A void* first parameter is ABI-identical to the real signature, and
 // keeps the proxy free of NDK headers so the host unit test can load it.
 JNIEXPORT void JNICALL ANativeActivity_onCreate(void* activity, void* saved_state, size_t saved_state_size) {
-    if (g_vm == NULL || g_proxy_path[0] == 0) {
-        log_error("ANativeActivity_onCreate before JNI_OnLoad: no bridge to call");
-        return;
-    }
     JNIEnv* env = NULL;
-    if ((*g_vm)->GetEnv(g_vm, (void**)&env, JNI_VERSION_1_6) != JNI_OK || env == NULL) {
-        log_error("%s: GetEnv(JNI_VERSION_1_6) failed in ANativeActivity_onCreate", g_proxy_path);
-        return;
+    if (g_vm != NULL && g_proxy_path[0] != 0) {
+        if ((*g_vm)->GetEnv(g_vm, (void**)&env, JNI_VERSION_1_6) != JNI_OK || env == NULL) {
+            log_error("%s: GetEnv(JNI_VERSION_1_6) failed in ANativeActivity_onCreate", g_proxy_path);
+            return;
+        }
+    } else {
+        // ANativeActivity starts with callbacks, JavaVM and JNIEnv. Android can call this entry
+        // point without calling JNI_OnLoad, so bootstrap the same proxy load from those fields.
+        struct ActivityPrefix {
+            void* callbacks;
+            JavaVM* vm;
+            JNIEnv* env;
+        };
+        struct ActivityPrefix* native = (struct ActivityPrefix*)activity;
+        if (native == NULL || native->vm == NULL || native->env == NULL ||
+            !proxy_path(g_proxy_path, sizeof g_proxy_path)) {
+            log_error("ANativeActivity_onCreate has no VM, JNIEnv or proxy path");
+            return;
+        }
+        g_vm = native->vm;
+        env = native->env;
+        if ((*env)->ExceptionCheck(env)) {
+            log_error("%s: exception already pending in ANativeActivity_onCreate", g_proxy_path);
+            return;
+        }
+        if (notify_proxy_loaded(env, g_proxy_path) == JNI_ERR) {
+            log_error("%s: proxy load failed in ANativeActivity_onCreate", g_proxy_path);
+            if ((*env)->ExceptionCheck(env)) (*env)->ExceptionClear(env);
+            return;
+        }
     }
     if ((*env)->ExceptionCheck(env)) {
         log_error("%s: exception already pending in ANativeActivity_onCreate", g_proxy_path);

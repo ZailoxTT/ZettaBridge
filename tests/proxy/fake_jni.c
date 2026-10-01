@@ -9,6 +9,7 @@
 #include <dlfcn.h>
 #include <jni.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -330,10 +331,33 @@ static void test_new_string_fails(void) {
     check_clean();
 }
 
+// Android's NativeActivity loader may call the exported activity entry point without invoking
+// JNI_OnLoad first. The ANativeActivity prefix supplies the VM and current-thread JNIEnv, so the
+// proxy must load the guest library and then create the guest activity in that order.
+static void test_native_activity_before_onload(void) {
+    struct ActivityPrefix {
+        void* callbacks;
+        JavaVM* vm;
+        JNIEnv* env;
+    } activity = {NULL, (JavaVM*)&vm_ptr, (JNIEnv*)&env_ptr};
+
+    reset("ANativeActivity_onCreate before JNI_OnLoad");
+    fake.call_result = JNI_VERSION_1_6;
+    fake.boolean_result = JNI_TRUE;
+    on_create(&activity, (void*)0x5678, 9);
+    CHECK(fake.static_int_calls == 1);
+    CHECK(fake.static_boolean_calls == 1);
+    CHECK(fake.activity == (jlong)(uintptr_t)&activity);
+    CHECK(fake.saved_state == 0x5678 && fake.saved_state_size == 9);
+    CHECK(strcmp(fake.string_value, proxy_path) == 0);
+    CHECK(!fake.exception_pending);
+    check_clean();
+}
+
 // ANativeActivity_onCreate is the one export android.app.NativeActivity looks for. It arrives
 // with no JavaVM of its own, so the proxy must have kept the one JNI_OnLoad was given.
 static void test_native_activity(void) {
-    reset("ANativeActivity_onCreate before JNI_OnLoad is impossible here (JNI_OnLoad already ran)");
+    reset("JNI_OnLoad before ANativeActivity_onCreate");
     fake.call_result = JNI_VERSION_1_6;
     CHECK(run() == JNI_VERSION_1_6);
 
@@ -402,6 +426,7 @@ int main(int argc, char** argv) {
     on_create = (OnCreateFn)dlsym(handle, "ANativeActivity_onCreate");
     CHECK(on_create != NULL);
 
+    test_native_activity_before_onload();
     test_success_versions();
     test_unsupported_versions();
     test_call_throws();
