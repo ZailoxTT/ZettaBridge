@@ -232,9 +232,18 @@ void test_bad_runtime_layout(const fs::path& base) {
     CHECK(engine.binds == 1 && engine.bound_loader == kLoader);
     // Activation redirects the plugin's arm64 proxy directory at its arm32 libraries, so a guest
     // that opens a file beside "its own" library reaches the real one.
-    CHECK(engine.aliases.size() == 1);
+    CHECK(engine.aliases.size() >= 1);
     CHECK(engine.aliases[0].first == tree.root("com.example.a").string() + "/proxy/");
     CHECK(engine.aliases[0].second == tree.root("com.example.a").string() + "/lib/");
+    // A guest that opens a platform library by absolute path gets our arm32 stub: Unity's shim
+    // does dlopen("/system/lib/libandroid.so") and resolves its input accessors out of it, and
+    // the device's own library there is 64-bit and unusable to the guest.
+    bool android_aliased = false;
+    for (const auto& [from, to] : engine.aliases) {
+        if (from != "/system/lib/libandroid.so") continue;
+        android_aliased = to.size() > 13 && to.compare(to.size() - 14, 14, "/libandroid.so") == 0;
+    }
+    CHECK(android_aliased);
 }
 
 void test_activation_and_loads(const Tree& tree) {

@@ -137,6 +137,7 @@ LibraryRuntimeOptions guest_runtime_options(const GuestRuntimeLayout& layout, co
     options.target_sdk = target_sdk;
     options.preload = "libzbjni.so";
     options.guest_environment = {"LD_LIBRARY_PATH=" + layout.guest_lib_dir + ":" + plugin_root + "/lib"};
+    options.guest_lib_dir = layout.guest_lib_dir;
     return options;
 }
 
@@ -193,6 +194,15 @@ bool ProxyRuntime::activate_plugin(JniBackend::Env env, const std::string& plugi
         // opens something beside "its own" library finds the real thing (IL2CPP does exactly
         // this and otherwise reports that it cannot load).
         engine_.add_path_alias(root + "/proxy/", root + "/lib/");
+        // Old guests open platform libraries by absolute path: Unity's shim does
+        // dlopen("/system/lib/libandroid.so") and resolves AMotionEvent_* out of it. That path
+        // holds the device's own 64-bit library, which the guest linker cannot load, so the
+        // handle came back null, every lookup after it answered null, and the guest eventually
+        // called one of those nulls. Each library we ship a 32-bit stub for answers from there.
+        for (const char* name : {"libandroid.so", "libEGL.so", "libGLESv2.so", "libGLESv1_CM.so",
+                                 "libjnigraphics.so"}) {
+            engine_.add_path_alias("/system/lib/" + std::string(name), options.guest_lib_dir + "/" + name);
+        }
         target_sdk_ = target_sdk;
         options_ = std::move(options);
         log("guest JNI runtime: plugin %s activated (targetSdk %u)", root.c_str(), target_sdk);
