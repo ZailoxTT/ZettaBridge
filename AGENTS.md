@@ -1728,3 +1728,28 @@ is one short-frame/exit or ANR run and one materially longer run. Preserve the f
 decisive comparison is the three `signal-restart*` lines together with `guest-exit`, `egl-swaps`
 and the watchdog lines. A mismatch between restartable EINTRs and associated deliveries is also
 evidence; do not infer a fix from totals alone.
+
+### Device result: Unity restart accounting is balanced; Thomas reaches the menu
+
+Three OnePlus 13 runs of the release above produced a short pre-menu capture, a manually
+force-closed capture, and a longer intro-plus-menu capture. None reported a guest exit, an
+unimplemented host call, a GL/EGL error, or a proxy/JNI failure. The long run presented 1,305
+frames from 121,648 GL calls and continued through the intro into the menu with audio and touch.
+
+The restart transition accounting balances exactly in every run:
+
+- short: 15 EINTRs, 7 restartable, 7 SA_RESTART deliveries, 7 rewinds;
+- force-closed: 6 EINTRs, 3 restartable, 3 SA_RESTART deliveries, 3 rewinds;
+- intro/menu: 47 EINTRs, 23 restartable, 23 SA_RESTART deliveries, 23 rewinds.
+
+The last non-restartable calls were `nanosleep` or `rt_sigsuspend`, as expected, and every recorded
+restartable delivery was a `futex` with `SA_RESTART`. The counts scale with run duration and show
+no unmatched restartable EINTR. Together with the 100/100 host stress result and the passing T6
+device stress, this rules out the signal-restart path as the cause of the earlier Unity variability.
+Do not change restart semantics without new contradictory evidence.
+
+The old saved `unity.txt` is an ANR-era capture with no Inflate Error, and the new reports contain
+no archive/decompression failure. Do not add another logging layer until the failure reproduces.
+**NEXT/device gate:** start a new run, enter the first level, and play for several minutes. Verify
+scene loading, rendering, touch and audio; preserve the report only if it exits, hangs, corrupts
+assets, or otherwise fails. A clean level run is the Thomas Was Alone bring-up acceptance point.
