@@ -341,6 +341,11 @@ JniBackend::Ref HostJni::resolve_ref(std::uint32_t handle, const char* function)
     return impl_->resolve(impl_->thread(), handle, function);
 }
 
+std::uint32_t HostJni::new_global_handle(JniBackend::Ref ref) {
+    if (ref == 0) return 0;
+    return impl_->globals.add(ref);
+}
+
 std::uint32_t HostJni::new_local_handle(JniBackend::Ref ref) {
     if (ref == 0) return 0;
     return impl_->local(impl_->thread(), ref);

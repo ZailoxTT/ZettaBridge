@@ -63,6 +63,11 @@ public:
     // calling thread's current frame. 0 for a null ref. Lets another host-call dispatcher
     // (HostNativeWindow) hand a Java object back to the guest as a jobject.
     std::uint32_t new_local_handle(JniBackend::Ref ref);
+    // The same for a reference that must outlive the call and cross threads: a NativeActivity
+    // keeps the activity object in its own structure and uses it from its own threads, where a
+    // local handle is long gone (ART ends the process for using one: "invalid JNI reference").
+    // The caller owns the global reference behind it.
+    std::uint32_t new_global_handle(JniBackend::Ref ref);
 
     // Runs a guest function as native code called from Java on the calling host thread, whose
     // host JNIEnv is env. Uses the guest thread this host thread already runs, or else this host

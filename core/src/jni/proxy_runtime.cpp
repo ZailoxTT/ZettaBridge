@@ -507,7 +507,7 @@ bool GuestJniEngine::create_native_activity(JniBackend::Env env, std::uint64_t a
     description.guest_vm = host_jni_->guest_java_vm();
     // The activity object is held for the life of the activity: the guest keeps the jobject in
     // its own structure and calls Java through it long after this returns.
-    description.activity_handle = host_jni_->new_local_handle(backend_.new_global_ref(env, facts.activity_object));
+    description.activity_handle = host_jni_->new_global_handle(backend_.new_global_ref(env, facts.activity_object));
     description.asset_manager =
         host_assets_ != nullptr ? host_assets_->handle_for_manager(facts.asset_manager) : 0;
     description.sdk_version = facts.sdk_version;
