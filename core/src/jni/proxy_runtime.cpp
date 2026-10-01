@@ -372,17 +372,21 @@ GuestJniEngine::GuestJniEngine(JniBackend& backend, GlBackend* gl_backend, HostG
                 if (!result) return std::nullopt;
                 return result->guest.r0;
             },
-            [runtime](std::size_t size) -> std::optional<std::uint32_t> {
+            // The guest allocator, reached the same way as the callbacks. It must not be
+            // call_on_current: this whole path arrives on the Java main thread, which runs no
+            // guest code of its own, and the activity failed to be built at all for that reason
+            // ("cannot allocate the guest activity" on the device).
+            [jni_for_activity, runtime](std::size_t size) -> std::optional<std::uint32_t> {
                 GuestCall call;
                 call.regs = {static_cast<std::uint32_t>(size), 0, 0, 0};
-                const auto result = runtime->call_on_current(runtime->service_api().malloc_fn, call);
+                const auto result = jni_for_activity->call_on_host_thread(runtime->service_api().malloc_fn, call);
                 if (!result || result->r0 == 0) return std::nullopt;
                 return result->r0;
             },
-            [runtime](std::uint32_t address) {
+            [jni_for_activity, runtime](std::uint32_t address) {
                 GuestCall call;
                 call.regs = {address, 0, 0, 0};
-                runtime->call_on_current(runtime->service_api().free_fn, call);
+                jni_for_activity->call_on_host_thread(runtime->service_api().free_fn, call);
             });
     }
     if (configuration_backend != nullptr) {
