@@ -230,10 +230,11 @@ bool HostInput::handle_host_call(std::uint32_t index, GuestThread& thread) {
             std::lock_guard<std::mutex> lock(mutex_);
             attachments_[regs[0]] = Attachment{real_looper, static_cast<std::int32_t>(regs[2]), regs[4]};
         }
-        runtime_report().note_jni_detail("input-attach",
-                                         "ident " + std::to_string(regs[2]) + " guest-looper 0x" +
-                                             std::to_string(regs[1]) + (real_looper != 0 ? " real" : " no real"),
-                                         true);
+        char detail[160];
+        std::snprintf(detail, sizeof detail, "ident %u looper 0x%08x owner-tid %d caller-tid %d%s",
+                      regs[2], regs[1], looper_owner_ ? looper_owner_(regs[1]) : 0, thread.tid,
+                      real_looper != 0 ? "" : " (no real looper)");
+        runtime_report().note_jni_detail("input-attach", detail, true);
         regs[0] = 0;
         return true;
     }

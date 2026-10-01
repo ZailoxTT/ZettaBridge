@@ -44,6 +44,11 @@ public:
     using InputProbe = std::function<std::optional<InputReady>(std::uint64_t real_looper)>;
     void set_input_probe(InputProbe probe);
 
+    // The guest tid that owns a guest looper handle, or 0. The attach records it: a queue
+    // attached to a looper nobody polls never delivers, and which thread owns what is the first
+    // thing to check when it does not.
+    std::int32_t owner_of(std::uint32_t looper_handle);
+
     // backend nullptr (the host build, and any process without an Android looper) keeps every
     // thread on the guest path.
     explicit HostLooper(LibraryRuntime& runtime, AndroidLooperBackend* backend = nullptr,

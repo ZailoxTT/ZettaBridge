@@ -562,6 +562,14 @@ struct HostLooper::Impl {
         return true;
     }
 
+    std::int32_t owner_of(std::uint32_t looper_handle) {
+        std::lock_guard<std::mutex> lock(mutex);
+        for (const auto& [thread, handle] : thread_loopers) {
+            if (handle == looper_handle && thread != nullptr) return thread->tid;
+        }
+        return 0;
+    }
+
     int wake_fd_of(std::uint32_t handle) {
         std::lock_guard<std::mutex> lock(mutex);
         const auto it = loopers.find(handle);
@@ -792,6 +800,10 @@ HostLooper::HostLooper(LibraryRuntime& runtime, AndroidLooperBackend* backend, G
                        BorrowerProbe borrower_probe)
     : impl_(std::make_unique<Impl>(runtime, backend, std::move(invoker), std::move(borrower_probe))) {}
 HostLooper::~HostLooper() = default;
+
+std::int32_t HostLooper::owner_of(std::uint32_t looper_handle) {
+    return impl_->owner_of(looper_handle);
+}
 
 void HostLooper::set_input_probe(InputProbe probe) {
     impl_->input_probe = std::move(probe);

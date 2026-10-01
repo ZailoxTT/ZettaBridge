@@ -416,7 +416,8 @@ GuestJniEngine::GuestJniEngine(JniBackend& backend, GlBackend* gl_backend, HostG
         host_input_ = new HostInput(*runtime_, *input_backend,
                                     [looper](GuestThread& thread, std::uint32_t handle, std::uint64_t& real) {
                                         return looper->ensure_real_looper(thread, handle, real);
-                                    });
+                                    },
+                                    [looper](std::uint32_t handle) { return looper->owner_of(handle); });
         HostInput* input = host_input_;
         host_looper_->set_input_probe([input](std::uint64_t real) -> std::optional<HostLooper::InputReady> {
             const std::optional<HostInput::Ready> ready = input->ready_on(real);

@@ -28,9 +28,13 @@ public:
     // queue simply never delivers, which the report says.
     // (thread, the looper handle the guest named, out: the real looper to attach to).
     using RealLooperRequest = std::function<bool(GuestThread& thread, std::uint32_t looper, std::uint64_t& real)>;
+    // The guest tid that owns a guest looper handle, for the report.
+    using LooperOwner = std::function<std::int32_t(std::uint32_t looper)>;
 
-    HostInput(LibraryRuntime& runtime, InputBackend& backend, RealLooperRequest real_looper = {})
-        : runtime_(runtime), backend_(backend), real_looper_(std::move(real_looper)) {}
+    HostInput(LibraryRuntime& runtime, InputBackend& backend, RealLooperRequest real_looper = {},
+              LooperOwner looper_owner = {})
+        : runtime_(runtime), backend_(backend), real_looper_(std::move(real_looper)),
+          looper_owner_(std::move(looper_owner)) {}
     HostInput(const HostInput&) = delete;
     HostInput& operator=(const HostInput&) = delete;
 
@@ -68,6 +72,7 @@ private:
     LibraryRuntime& runtime_;
     InputBackend& backend_;
     RealLooperRequest real_looper_;
+    LooperOwner looper_owner_;
     GlobalHandles queues_{HandleKind::Global};
     GlobalHandles events_{HandleKind::Global};
     mutable std::mutex mutex_;
