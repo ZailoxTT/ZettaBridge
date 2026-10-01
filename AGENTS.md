@@ -1697,3 +1697,34 @@ bounded runtime-report counters for the real Unity path: syscall returns `EINTR`
 as restartable/non-restartable, signal delivery with/without `SA_RESTART`, and actual PC/register
 rewind. Compare those counters and the last affected syscall between a short-frame failure and a
 long run before proposing a fix.
+
+## 2026-10-01: Unity signal-restart counters ready in launcher release
+
+The bounded counters above are implemented without changing signal or restart semantics. The
+runtime report now contains:
+
+- `signal-restart`: totals for syscall `EINTR`, restartable/nonrestartable classification,
+  delivery with/without `SA_RESTART`, and actual rewinds;
+- `signal-restart-last-eintr`: syscall number/name, guest tid and classification;
+- `signal-restart-last-delivery`: associated syscall, tid, action flag and whether PC/registers
+  were restored.
+
+The syscall path records only real `-EINTR` results. The signal path records only delivery while
+a restartable syscall is pending. Counter notifications use the report writer's existing throttle;
+there is no per-event file write and no new thread. TDD RED was the report test failing to compile
+without the two event methods; it now checks exact counts, last events and `clear()`.
+
+Fresh verification: focused report test PASS; `sigrestart_dynamic` and `sigio_race_dynamic` PASS;
+host 54/54 PASS; complete guest suite PASS; Android arm64 `zbridge`, launcher bundle and Gradle
+`assembleRelease` PASS. The APK's packaged `libzbridge.so` hash exactly matches the Android build,
+and APK Signature Scheme v2 verification passes with one signer.
+
+Ready launcher: `android/launcher/app/build/outputs/apk/release/app-release.apk`, 6,701,892 bytes,
+SHA-256 `e5ddd39e39e97d016f257172c6c66bf45918ee92d62e78b7d9d56bd6fc642417`.
+
+**NEXT/device gate:** install this release over the launcher and force-stop it. Run Thomas Was
+Alone repeatedly, copying **Last run report after each run before starting the next**, until there
+is one short-frame/exit or ANR run and one materially longer run. Preserve the full reports; the
+decisive comparison is the three `signal-restart*` lines together with `guest-exit`, `egl-swaps`
+and the watchdog lines. A mismatch between restartable EINTRs and associated deliveries is also
+evidence; do not infer a fix from totals alone.

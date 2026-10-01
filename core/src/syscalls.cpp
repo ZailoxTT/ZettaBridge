@@ -1713,8 +1713,13 @@ bool handle_syscall(Process& proc, GuestThread& thread) {
     // The pc of the svc itself: the stop recorded the instruction after it, and Thumb svc is two
     // bytes where ARM is four.
     thread.syscall_restartable = res == -EINTR && restartable_syscall(nr, c.a);
+    if (res == -EINTR) {
+        runtime_report().note_syscall_eintr(nr, syscall_name(nr), guest_tid(),
+                                            thread.syscall_restartable);
+    }
     if (thread.syscall_restartable) {
         const bool thumb = (thread.cpsr() & 0x20u) != 0;
+        thread.restart_syscall = nr;
         thread.restart_pc = regs[15] - (thumb ? 2u : 4u);
         for (unsigned i = 0; i < 6; ++i) thread.restart_regs[i] = c.a[i];
         thread.restart_regs[6] = regs[6];

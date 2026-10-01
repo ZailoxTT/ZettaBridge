@@ -120,6 +120,7 @@ public:
     // trusts that does not retry: Unity treats an interrupted semaphore wait as a failure, and
     // mono and FMOD signal often enough that it happens within seconds.
     bool syscall_restartable = false;
+    std::uint32_t restart_syscall = 0;
     std::uint32_t restart_pc = 0;                 // the svc instruction itself
     std::array<std::uint32_t, 8> restart_regs{};  // r0-r7 as the call was made
     // The mask a signal frame must record instead of `sigmask`, set while sigsuspend runs with a

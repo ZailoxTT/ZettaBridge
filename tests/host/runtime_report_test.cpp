@@ -293,6 +293,31 @@ void check_exit_reason() {
           "guest-exit: guest SIGSEGV: read of 0x00000000, pc 0xf0001234 in liblime.so offset 0x1234");
 }
 
+void check_signal_restart_section() {
+    zb::RuntimeReport report;
+    report.note_syscall_eintr(240, "futex", 101, true);
+    report.note_syscall_eintr(162, "nanosleep", 102, false);
+    report.note_syscall_eintr(240, "futex", 101, true);
+    report.note_signal_restart(240, "futex", 101, true, true);
+    report.note_signal_restart(240, "futex", 101, false, false);
+
+    const std::string text = report.text();
+    CHECK(line_with(text, "signal-restart:") ==
+          "signal-restart: eintr=3 restartable=2 nonrestartable=1 delivered-sa-restart=1 "
+          "delivered-no-restart=1 rewound=1");
+    CHECK(line_with(text, "signal-restart-last-eintr:") ==
+          "signal-restart-last-eintr: futex(240) tid=101 restartable=yes");
+    CHECK(line_with(text, "signal-restart-last-delivery:") ==
+          "signal-restart-last-delivery: futex(240) tid=101 sa-restart=no rewound=no");
+
+    report.clear();
+    CHECK(line_with(report.text(), "signal-restart:") ==
+          "signal-restart: eintr=0 restartable=0 nonrestartable=0 delivered-sa-restart=0 "
+          "delivered-no-restart=0 rewound=0");
+    CHECK(report.text().find("signal-restart-last-eintr:") == std::string::npos);
+    CHECK(report.text().find("signal-restart-last-delivery:") == std::string::npos);
+}
+
 void check_observer() {
     zb::RuntimeReport report;
     int structural = 0;
@@ -401,6 +426,7 @@ int main() {
     check_loads_and_natives();
     check_native_calls_and_opens();
     check_exit_reason();
+    check_signal_restart_section();
     check_observer();
     check_file_writer(dir);
     check_throttle(dir);

@@ -12,6 +12,8 @@
 
 #include "zb/log.h"
 #include "zb/process.h"
+#include "zb/runtime_report.h"
+#include "zb/syscalls.h"
 
 namespace zb {
 
@@ -213,10 +215,17 @@ bool Process::deliver_signal(GuestThread& thread, const g::siginfo32& info, bool
     // fails an interrupted semaphore wait outright. The restart is arranged before the frame is
     // built, so sigreturn resumes at the svc itself.
     if (thread.syscall_restartable) {
-        if ((act.flags & kSaRestart) != 0) {
+        const bool sa_restart = (act.flags & kSaRestart) != 0;
+        if (sa_restart) {
             for (unsigned i = 0; i < 8; ++i) regs[i] = thread.restart_regs[i];
             regs[15] = thread.restart_pc;
         }
+        const std::uint64_t guest_tid =
+            thread.tid != 0 ? static_cast<std::uint64_t>(thread.tid)
+                            : static_cast<std::uint64_t>(::syscall(SYS_gettid));
+        runtime_report().note_signal_restart(thread.restart_syscall,
+                                             syscall_name(thread.restart_syscall), guest_tid,
+                                             sa_restart, sa_restart);
         thread.syscall_restartable = false;
     }
     const g::stack32& alt = thread.altstack;

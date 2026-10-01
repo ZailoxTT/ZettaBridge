@@ -197,6 +197,41 @@ void RuntimeReport::note_guest_exit(const std::string& reason) {
     if (observer) (*observer)(true);
 }
 
+void RuntimeReport::note_syscall_eintr(std::uint32_t nr, const char* name,
+                                       std::uint64_t guest_tid, bool restartable) {
+    std::shared_ptr<Observer> observer;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        ++signal_eintr_total_;
+        ++(restartable ? signal_restartable_total_ : signal_nonrestartable_total_);
+        signal_last_eintr_ = one_line(std::string(name != nullptr ? name : "?") + "(" +
+                                          std::to_string(nr) + ") tid=" +
+                                          std::to_string(guest_tid) + " restartable=" +
+                                          (restartable ? "yes" : "no"),
+                                      kMaxDetail);
+        observer = take_observer();
+    }
+    if (observer) (*observer)(false);
+}
+
+void RuntimeReport::note_signal_restart(std::uint32_t nr, const char* name,
+                                        std::uint64_t guest_tid, bool sa_restart, bool rewound) {
+    std::shared_ptr<Observer> observer;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        ++(sa_restart ? signal_delivered_sa_restart_total_ : signal_delivered_no_restart_total_);
+        if (rewound) ++signal_rewound_total_;
+        signal_last_delivery_ = one_line(std::string(name != nullptr ? name : "?") + "(" +
+                                             std::to_string(nr) + ") tid=" +
+                                             std::to_string(guest_tid) + " sa-restart=" +
+                                             (sa_restart ? "yes" : "no") + " rewound=" +
+                                             (rewound ? "yes" : "no"),
+                                         kMaxDetail);
+        observer = take_observer();
+    }
+    if (observer) (*observer)(false);
+}
+
 void RuntimeReport::note_gl_call(const char* function, std::uint64_t host_tid) {
     bool structural = false;
     std::shared_ptr<Observer> observer;
@@ -512,6 +547,17 @@ std::string RuntimeReport::text() const {
     out += exit_reason_.empty() ? "(none)" : exit_reason_;
     out += '\n';
 
+    out += "signal-restart: eintr=" + std::to_string(signal_eintr_total_) +
+           " restartable=" + std::to_string(signal_restartable_total_) +
+           " nonrestartable=" + std::to_string(signal_nonrestartable_total_) +
+           " delivered-sa-restart=" + std::to_string(signal_delivered_sa_restart_total_) +
+           " delivered-no-restart=" + std::to_string(signal_delivered_no_restart_total_) +
+           " rewound=" + std::to_string(signal_rewound_total_) + '\n';
+    if (!signal_last_eintr_.empty()) out += "signal-restart-last-eintr: " + signal_last_eintr_ + '\n';
+    if (!signal_last_delivery_.empty()) {
+        out += "signal-restart-last-delivery: " + signal_last_delivery_ + '\n';
+    }
+
     {
         std::vector<std::pair<const std::string*, std::uint64_t>> counts;
         std::uint64_t total = 0;
@@ -612,6 +658,14 @@ void RuntimeReport::clear() {
     onload_total_ = 0;
     registered_natives_ = 0;
     exit_reason_.clear();
+    signal_eintr_total_ = 0;
+    signal_restartable_total_ = 0;
+    signal_nonrestartable_total_ = 0;
+    signal_delivered_sa_restart_total_ = 0;
+    signal_delivered_no_restart_total_ = 0;
+    signal_rewound_total_ = 0;
+    signal_last_eintr_.clear();
+    signal_last_delivery_.clear();
     native_calls_.clear();
     native_calls_overflow_.count.store(0, std::memory_order_relaxed);
     opened_paths_.clear();

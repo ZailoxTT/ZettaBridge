@@ -60,6 +60,14 @@ public:
     // The first reason wins: a crash report says more than the exit status that follows it.
     void note_guest_exit(const std::string& reason);
 
+    // Signal/syscall restart census for timing-dependent Unity failures. These are called only
+    // when a guest syscall actually returns EINTR or a signal is delivered while such a
+    // restartable call is pending; counter-only observer notifications remain throttled.
+    void note_syscall_eintr(std::uint32_t nr, const char* name, std::uint64_t guest_tid,
+                            bool restartable);
+    void note_signal_restart(std::uint32_t nr, const char* name, std::uint64_t guest_tid,
+                             bool sa_restart, bool rewound);
+
     // Guest file opens worth knowing about (did the guest find its .so/.dat/.bin payloads and
     // flutter_assets): the most recent kMaxOpenedPaths distinct paths successfully opened that
     // matched the syscall layer's narrow filter, most-recent last, and the first
@@ -168,6 +176,14 @@ private:
     std::size_t onload_total_ = 0;
     std::uint64_t registered_natives_ = 0;
     std::string exit_reason_;
+    std::uint64_t signal_eintr_total_ = 0;
+    std::uint64_t signal_restartable_total_ = 0;
+    std::uint64_t signal_nonrestartable_total_ = 0;
+    std::uint64_t signal_delivered_sa_restart_total_ = 0;
+    std::uint64_t signal_delivered_no_restart_total_ = 0;
+    std::uint64_t signal_rewound_total_ = 0;
+    std::string signal_last_eintr_;
+    std::string signal_last_delivery_;
 
     struct NativeCallEntry {
         std::string name;
