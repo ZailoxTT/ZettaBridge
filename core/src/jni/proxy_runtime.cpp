@@ -313,6 +313,9 @@ bool ProxyRuntime::on_native_activity_created(JniBackend::Env env, std::uint64_t
         }
     }
     if (guest_library != 0) {
+        // Written before the call, not after: a guest ANativeActivity_onCreate that never returns
+        // leaves no line at all otherwise, and "never called" and "called and hung" look the same.
+        runtime_report().note_jni_detail("native-activity", library + ": calling the guest", true);
         if (engine_.create_native_activity(env, activity, reinterpret_cast<const void*>(
                                                static_cast<std::uintptr_t>(saved_state)),
                                            static_cast<std::size_t>(saved_state_size), guest_library, error)) {
