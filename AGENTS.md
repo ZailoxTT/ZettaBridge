@@ -1830,3 +1830,33 @@ SHA-256 `90b288fec59ef291ae5ac9b85e580fe716ec99c7560b8ba23bf30a9d480e4e23`.
 **NEXT/device gate:** install, force-stop and tap in either Unity game. Success means no five-second
 ANR and a `jni-input-queue` line with balanced `get`/`finish`. Preserve logcat and Last run report
 if activity creation still fails or the counters do not balance.
+
+### 2026-10-01: Unity is playable through NativeActivity
+
+Lane Racer and Thomas Was Alone run and take touch input on the OnePlus 13. The chain that got
+there, each step found from one report or dump line:
+
+- The proxy exports `ANativeActivity_onCreate` and tolerates being entered before `JNI_OnLoad`
+  (Codex), and a stale per-plugin copy of it is replaced.
+- The guest activity is allocated through a borrowed carrier, not `call_on_current`: this path
+  arrives on the Java main thread, which runs no guest code ("cannot allocate the guest activity").
+- The JNIEnv for guest lifecycle calls comes from the calling thread, attaching it if needed.
+  `HostJni::current_env()` is a transition's env and there is no transition here.
+- The activity object crosses as a **global** handle. A local one belongs to the frame that made
+  it, and ART ends the process on the first use from the guest's own thread
+  ("GetObjectClass: invalid JNI reference").
+- `AInputQueue_attachLooper` honours the looper the guest named, carries the guest's data word
+  through, and the poll writes the fd, the events and that word back into the guest's pointers.
+- A borrower's poll asks the attached queues whether they hold events and answers with the
+  queue's ident. **This was the one that made input work.** Unity's NativeActivity path runs on
+  the Java main thread, whose real looper is the application's own: an input queue attached there
+  is pumped by Java's loop, which knows nothing of the ident the guest waits for. Before this,
+  every poll returned a bare wake and the framework waited out its five seconds.
+
+Report lines that localize this area: `jni-input-attach` (ident, looper, owner and caller tids),
+`jni-input-queue` (get/finish), `looper-polls` (ident versus wake).
+
+**Open:** both games abort after a while (`guest exited with status 134`). Thomas Was Alone is the
+reproducible one: whichever control is pressed first keeps working, and the other one ends the
+process - the shape of something initialized once, for one path only. The abort message in the
+native dump is the next piece of evidence; the report does not carry it.
