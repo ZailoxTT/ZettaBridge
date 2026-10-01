@@ -80,7 +80,7 @@ ZettaBridge launcher (arm64 app)
   - A modern Flutter app starts, runs its Dart code, presents frames and takes touch input,
     though rendering is not yet complete.
 
-Not supported yet: `NativeActivity` (so Unity and pure-NDK guests do not start), Vulkan, and
+Not supported yet: Vulkan and
 anything that needs a real package installation.
 
 ## Roadmap
