@@ -14,6 +14,7 @@
 #include "zb/host_input.h"
 #include "zb/input_hostcalls.h"
 #include "zb/library_runtime.h"
+#include "zb/runtime_report.h"
 
 namespace {
 
@@ -32,6 +33,7 @@ std::uint32_t call_input(zb::HostInput& input, zb::GuestThread& thread, std::uin
 }  // namespace
 
 int main() {
+    zb::runtime_report().clear();
     zb::LibraryRuntime runtime;
     CHECK(runtime.memory().map_anon(kData, 0x1000, PROT_READ | PROT_WRITE));
     MockInput backend;
@@ -62,6 +64,9 @@ int main() {
     CHECK(call_input(input, thread, zb::ZB_INPUT_HC_AInputQueue_getEvent, {queue, kData}) == 0);
     std::memcpy(&handle, runtime.memory().base() + kData, sizeof handle);
     CHECK(handle != 0);
+    CHECK(zb::runtime_report().text().find(
+              "jni-input-queue: get=1 pre-dispatched=0 finish=0 release=0 outstanding=1") !=
+          std::string::npos);
 
     // Accessors: a word result, a float in a core register (AAPCS softfp), and a 64-bit pair.
     CHECK(call_input(input, thread, zb::ZB_INPUT_HC_AInputEvent_getType, {handle}) == 2);
@@ -85,6 +90,9 @@ int main() {
     // Finishing an event ends its handle; using it afterwards is rejected.
     CHECK(call_input(input, thread, zb::ZB_INPUT_HC_AInputQueue_finishEvent, {queue, handle, 1}) == 0);
     CHECK(backend.finished.size() == 1 && backend.last_handled == 1);
+    CHECK(zb::runtime_report().text().find(
+              "jni-input-queue: get=1 pre-dispatched=0 finish=1 release=0 outstanding=0") !=
+          std::string::npos);
     CHECK(call_input(input, thread, zb::ZB_INPUT_HC_AInputEvent_getType, {handle}) == 0);
     CHECK(call_input(input, thread, zb::ZB_INPUT_HC_AInputQueue_finishEvent, {queue, handle, 0}) == 0);
     CHECK(backend.finished.size() == 1);  // the second finish never reached the backend

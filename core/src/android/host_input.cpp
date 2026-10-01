@@ -43,6 +43,7 @@ std::size_t HostInput::remove_queue(std::uint32_t handle) {
     if (outstanding != 0) {
         log("input queue destroyed with %zu events the guest never finished", outstanding);
         runtime_report().note_jni_detail("input-events-dropped", std::to_string(outstanding), true);
+        report_queue_state();
     }
     return outstanding;
 }
@@ -63,6 +64,28 @@ const void* HostInput::live_event(std::uint32_t handle) const {
 
 void* HostInput::live_queue(std::uint32_t handle) const {
     return queue_for(handle);
+}
+
+void HostInput::report_queue_state() {
+    std::size_t gotten;
+    std::size_t pre_dispatched;
+    std::size_t finished;
+    std::size_t released;
+    std::size_t outstanding;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        gotten = events_gotten_;
+        pre_dispatched = events_pre_dispatched_;
+        finished = events_finished_;
+        released = events_released_;
+        outstanding = live_events_.size();
+    }
+    runtime_report().note_jni_detail(
+        "input-queue", "get=" + std::to_string(gotten) +
+                           " pre-dispatched=" + std::to_string(pre_dispatched) +
+                           " finish=" + std::to_string(finished) +
+                           " release=" + std::to_string(released) +
+                           " outstanding=" + std::to_string(outstanding), true);
 }
 
 bool HostInput::reject(const char* function, std::uint32_t handle) {
@@ -105,9 +128,11 @@ bool HostInput::handle_host_call(std::uint32_t index, GuestThread& thread) {
             handle = events_.add(from_pointer(event));
             std::lock_guard<std::mutex> lock(mutex_);
             live_events_[handle] = regs[0];
+            ++events_gotten_;
         }
         std::memcpy(out, &handle, sizeof handle);
         regs[0] = static_cast<std::uint32_t>(status);
+        if (event != nullptr) report_queue_state();
         return true;
     }
     case ZB_INPUT_HC_AInputQueue_preDispatchEvent: {
@@ -122,8 +147,10 @@ bool HostInput::handle_host_call(std::uint32_t index, GuestThread& thread) {
             {
                 std::lock_guard<std::mutex> lock(mutex_);
                 live_events_.erase(regs[1]);
+                ++events_pre_dispatched_;
             }
             events_.remove(regs[1]);
+            report_queue_state();
         }
         regs[0] = static_cast<std::uint32_t>(handled);
         return true;
@@ -136,9 +163,11 @@ bool HostInput::handle_host_call(std::uint32_t index, GuestThread& thread) {
         {
             std::lock_guard<std::mutex> lock(mutex_);
             live_events_.erase(regs[1]);
+            ++events_finished_;
         }
         events_.remove(regs[1]);
         backend_.queue_finish_event(queue, const_cast<void*>(event), static_cast<std::int32_t>(regs[2]));
+        report_queue_state();
         regs[0] = 0;
         return true;
     }
@@ -148,8 +177,10 @@ bool HostInput::handle_host_call(std::uint32_t index, GuestThread& thread) {
         {
             std::lock_guard<std::mutex> lock(mutex_);
             live_events_.erase(regs[0]);
+            ++events_released_;
         }
         events_.remove(regs[0]);
+        report_queue_state();
         regs[0] = 0;
         return true;
     }

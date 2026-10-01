@@ -1753,3 +1753,29 @@ no archive/decompression failure. Do not add another logging layer until the fai
 **NEXT/device gate:** start a new run, enter the first level, and play for several minutes. Verify
 scene loading, rendering, touch and audio; preserve the report only if it exits, hangs, corrupts
 assets, or otherwise fails. A clean level run is the Thomas Was Alone bring-up acceptance point.
+
+### Input ANR reproduced in two Unity games; queue lifecycle diagnostic ready
+
+The next Thomas Was Alone run stays healthy indefinitely when untouched, reaches the menu and
+plays music. Its first tap at `14:09:13.980` is followed by Android's Signal Catcher at
+`14:09:18.991`, a tombstoned stack dump and loss of top-resumed state: this is the platform's
+five-second input-dispatch ANR, not a guest crash or orderly exit. Lane Racer behaves identically,
+so the failure is in the shared NativeActivity input bridge rather than either game's code. The
+earlier Google Play Games exception is swallowed around 21 seconds before the tap and is not the
+five-second trigger.
+
+No input semantics have been changed without root-cause evidence. `HostInput` now publishes one
+bounded `jni-input-queue` report line with successful `get`, framework `pre-dispatched`, `finish`,
+`release`, and current `outstanding` event counts. The host test observed RED before this line
+existed and now checks both an outstanding fetched event and its finished state. Host 54/54,
+Android arm64 `zbridge`, launcher bundle and signed release build pass; the APK's packaged
+`libzbridge.so` hash matches the Android build and APK Signature Scheme v2 verifies with one signer.
+
+Ready launcher: `android/launcher/app/build/outputs/apk/release/app-release.apk`, 6,718,276 bytes,
+SHA-256 `18920f27100a8989640a118f023d5314344474e627468973f61ce3aec0abc2da`.
+
+**NEXT/device gate:** install this release, force-stop the launcher, launch either Thomas Was Alone
+or Lane Racer, tap once, wait for the five-second return, and copy Last run report. The decisive
+line is `jni-input-queue`: `get=0` localizes the bug before guest dequeue; `get>finish` proves the
+guest fetched an event but did not return it; balanced `get/finish` moves the investigation below
+the bridge/framework finish boundary. Do not change event ownership until this line is observed.

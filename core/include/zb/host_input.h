@@ -47,6 +47,7 @@ public:
 private:
     const void* live_event(std::uint32_t handle) const;
     void* live_queue(std::uint32_t handle) const;
+    void report_queue_state();
     // Records the rejection and answers the call with zero. Always returns true: the call was
     // served, and the guest sees what a real device returns for an event it no longer owns.
     bool reject(const char* function, std::uint32_t handle);
@@ -62,6 +63,10 @@ private:
     std::unordered_map<std::uint32_t, std::uint32_t> live_events_;
     std::string first_rejection_;
     std::size_t rejections_ = 0;
+    std::size_t events_gotten_ = 0;
+    std::size_t events_pre_dispatched_ = 0;
+    std::size_t events_finished_ = 0;
+    std::size_t events_released_ = 0;
 };
 
 }  // namespace zb
