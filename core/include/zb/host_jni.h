@@ -50,6 +50,10 @@ public:
     bool ready() const;
     // The guest JavaVM*, valid when ready().
     std::uint32_t guest_java_vm() const;
+    // The guest JNIEnv of the calling host thread, created on first use. A NativeActivity carries
+    // one in its own structure and the guest calls Java through it long after the activity was
+    // built, so it cannot be left empty.
+    std::uint32_t guest_env_on_current_thread();
 
     // The host JNIEnv of the calling thread's current JNI transition (call_native or a guest JNI
     // host call reached from one), or 0 outside one. Lets another host-call dispatcher (HostAssets)

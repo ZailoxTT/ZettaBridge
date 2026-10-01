@@ -333,6 +333,12 @@ std::uint32_t HostJni::guest_java_vm() const {
     return impl_->api.java_vm;
 }
 
+std::uint32_t HostJni::guest_env_on_current_thread() {
+    JniThread& state = impl_->thread();
+    if (!impl_->ensure_guest_env(state)) return 0;
+    return state.guest_env;
+}
+
 JniBackend::Env HostJni::current_env() {
     return impl_->thread().env;
 }

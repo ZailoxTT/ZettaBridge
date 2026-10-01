@@ -514,6 +514,9 @@ bool GuestJniEngine::create_native_activity(JniBackend::Env env, std::uint64_t a
         return false;
     }
     description.guest_vm = host_jni_->guest_java_vm();
+    // The activity's own JNIEnv. Leaving it zero is what made Unity jump to address zero: it
+    // reads this field, loads the function table through it and calls into Java from there.
+    description.guest_env = host_jni_->guest_env_on_current_thread();
     // The activity object is held for the life of the activity: the guest keeps the jobject in
     // its own structure and calls Java through it long after this returns.
     description.activity_handle = host_jni_->new_global_handle(backend_.new_global_ref(env, facts.activity_object));

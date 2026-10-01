@@ -108,7 +108,7 @@ int main(int argc, char** argv) {
         const ProbeState& state = probe_state(runtime, state_address);
         CHECK(state.on_create_calls == 1);
         CHECK(state.activity == *guest);
-        CHECK(state.vm == 0xAAAA0001 && state.env == 0xAAAA0002);
+        CHECK(state.vm == 0xAAAA0001 && state.env == 0xAAAA0002);  // both carried, neither empty
         CHECK(state.clazz == 0x2A && state.asset_manager == 0x3B);
         CHECK(state.sdk_version == 22);
         CHECK(std::string(state.internal_path) == description.internal_data_path);
