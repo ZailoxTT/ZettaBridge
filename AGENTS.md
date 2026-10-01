@@ -1683,3 +1683,17 @@ the screen result around `sigio_race_dynamic` (or the last visible line if the `
 exits/hangs). `PASS sigio_race_dynamic` means the constructed race also survives the real Android
 process; it still does not exonerate the exact Unity workload, so the following step is bounded
 restart-transition counters in the launcher report rather than another speculative signal fix.
+
+### Device result: Android signal race stress passes
+
+The signed T6 release APK passed its complete on-device suite, including
+`PASS sigio_race_dynamic`, on the OnePlus 13. The constructed concurrent file-read,
+`SA_RESTART` semaphore/futex and continuous-signal workload therefore passes both under host
+`zbrun` (100/100 repeated runs) and inside a real Android app process next to ART/libsigchain.
+
+This rules out the basic restart mechanism under the tested shape; it does not reproduce the
+Unity run-to-run variability. Do not change restart policy from this evidence. **NEXT:** add
+bounded runtime-report counters for the real Unity path: syscall returns `EINTR`, classification
+as restartable/non-restartable, signal delivery with/without `SA_RESTART`, and actual PC/register
+rewind. Compare those counters and the last affected syscall between a short-frame failure and a
+long run before proposing a fix.
