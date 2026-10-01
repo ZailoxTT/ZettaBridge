@@ -56,6 +56,38 @@ static int supported_version(jint version) {
     return version == JNI_VERSION_1_2 || version == JNI_VERSION_1_4 || version == JNI_VERSION_1_6;
 }
 
+static jclass find_bridge(JNIEnv* env, jobject activity) {
+    if (activity == NULL) return (*env)->FindClass(env, kBridgeClass);
+
+    jclass activity_class = NULL;
+    jobject loader = NULL;
+    jclass loader_class = NULL;
+    jstring name = NULL;
+    jclass bridge = NULL;
+    activity_class = (*env)->GetObjectClass(env, activity);
+    if (activity_class == NULL) goto done;
+    jmethodID get_loader = (*env)->GetMethodID(
+        env, activity_class, "getClassLoader", "()Ljava/lang/ClassLoader;");
+    if (get_loader == NULL) goto done;
+    loader = (*env)->CallObjectMethod(env, activity, get_loader);
+    if (loader == NULL || (*env)->ExceptionCheck(env)) goto done;
+    loader_class = (*env)->GetObjectClass(env, loader);
+    if (loader_class == NULL) goto done;
+    jmethodID load_class = (*env)->GetMethodID(
+        env, loader_class, "loadClass", "(Ljava/lang/String;)Ljava/lang/Class;");
+    if (load_class == NULL) goto done;
+    name = (*env)->NewStringUTF(env, "com.zettabridge.core.ZBridge");
+    if (name == NULL) goto done;
+    bridge = (jclass)(*env)->CallObjectMethod(env, loader, load_class, name);
+
+done:
+    if (name != NULL) (*env)->DeleteLocalRef(env, name);
+    if (loader_class != NULL) (*env)->DeleteLocalRef(env, loader_class);
+    if (loader != NULL) (*env)->DeleteLocalRef(env, loader);
+    if (activity_class != NULL) (*env)->DeleteLocalRef(env, activity_class);
+    return bridge;
+}
+
 static int proxy_path(char* out, size_t size) {
     Dl_info info;
     if (dladdr((void*)&JNI_OnLoad, &info) == 0 || info.dli_fname == NULL || info.dli_fname[0] != '/') {
@@ -67,8 +99,8 @@ static int proxy_path(char* out, size_t size) {
     return 1;
 }
 
-static jint notify_proxy_loaded(JNIEnv* env, const char* path) {
-    jclass bridge = (*env)->FindClass(env, kBridgeClass);
+static jint notify_proxy_loaded(JNIEnv* env, const char* path, jobject activity) {
+    jclass bridge = find_bridge(env, activity);
     if (bridge == NULL) {
         log_error("%s: class %s not found", path, kBridgeClass);
         return JNI_ERR;
@@ -124,7 +156,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
     }
 
     g_vm = vm;
-    return notify_proxy_loaded(env, g_proxy_path);
+    return notify_proxy_loaded(env, g_proxy_path, NULL);
 }
 
 // The one export android.app.NativeActivity looks for. The framework loads the library the
@@ -137,6 +169,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM* vm, void* reserved) {
 // keeps the proxy free of NDK headers so the host unit test can load it.
 JNIEXPORT void JNICALL ANativeActivity_onCreate(void* activity, void* saved_state, size_t saved_state_size) {
     JNIEnv* env = NULL;
+    jobject activity_object = NULL;
     if (g_vm != NULL && g_proxy_path[0] != 0) {
         if ((*g_vm)->GetEnv(g_vm, (void**)&env, JNI_VERSION_1_6) != JNI_OK || env == NULL) {
             log_error("%s: GetEnv(JNI_VERSION_1_6) failed in ANativeActivity_onCreate", g_proxy_path);
@@ -149,6 +182,7 @@ JNIEXPORT void JNICALL ANativeActivity_onCreate(void* activity, void* saved_stat
             void* callbacks;
             JavaVM* vm;
             JNIEnv* env;
+            jobject clazz;
         };
         struct ActivityPrefix* native = (struct ActivityPrefix*)activity;
         if (native == NULL || native->vm == NULL || native->env == NULL ||
@@ -158,11 +192,12 @@ JNIEXPORT void JNICALL ANativeActivity_onCreate(void* activity, void* saved_stat
         }
         g_vm = native->vm;
         env = native->env;
+        activity_object = native->clazz;
         if ((*env)->ExceptionCheck(env)) {
             log_error("%s: exception already pending in ANativeActivity_onCreate", g_proxy_path);
             return;
         }
-        if (notify_proxy_loaded(env, g_proxy_path) == JNI_ERR) {
+        if (notify_proxy_loaded(env, g_proxy_path, native->clazz) == JNI_ERR) {
             log_error("%s: proxy load failed in ANativeActivity_onCreate", g_proxy_path);
             if ((*env)->ExceptionCheck(env)) (*env)->ExceptionClear(env);
             return;
@@ -173,7 +208,7 @@ JNIEXPORT void JNICALL ANativeActivity_onCreate(void* activity, void* saved_stat
         return;
     }
 
-    jclass bridge = (*env)->FindClass(env, kBridgeClass);
+    jclass bridge = find_bridge(env, activity_object);
     if (bridge == NULL) {
         log_error("%s: class %s not found", g_proxy_path, kBridgeClass);
         return;

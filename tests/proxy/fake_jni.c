@@ -33,6 +33,7 @@ struct Fake {
     int getenv_fails;
     int pending_on_entry;
     int find_class_fails;
+    int bridge_find_class_fails;
     int method_fails;
     int new_string_fails;
     int call_throws;
@@ -66,6 +67,8 @@ struct Fake {
 static struct Fake fake;
 static int ref_tokens[kMaxRefs];
 static int method_token;
+static int get_loader_token;
+static int load_class_token;
 
 static jobject new_ref(void) {
     for (int i = 0; i < kMaxRefs; ++i) {
@@ -95,7 +98,8 @@ static jclass JNICALL fake_find_class(JNIEnv* env, const char* name) {
     note_call();
     ++fake.find_class_calls;
     snprintf(fake.class_name, sizeof fake.class_name, "%s", name);
-    if (fake.find_class_fails) {
+    if (fake.find_class_fails ||
+        (fake.bridge_find_class_fails && strcmp(name, "com/zettabridge/core/ZBridge") == 0)) {
         fake.exception_pending = 1;
         return NULL;
     }
@@ -115,6 +119,32 @@ static jmethodID JNICALL fake_get_static_method_id(JNIEnv* env, jclass cls, cons
         return NULL;
     }
     return (jmethodID)&method_token;
+}
+
+static jclass JNICALL fake_get_object_class(JNIEnv* env, jobject object) {
+    (void)env;
+    note_call();
+    CHECK(object != NULL);
+    return (jclass)new_ref();
+}
+
+static jmethodID JNICALL fake_get_method_id(JNIEnv* env, jclass cls, const char* name,
+                                            const char* sig) {
+    (void)env;
+    note_call();
+    CHECK(ref_index(cls) >= 0 && fake.ref_live[ref_index(cls)]);
+    (void)sig;
+    if (strcmp(name, "getClassLoader") == 0) return (jmethodID)&get_loader_token;
+    CHECK(strcmp(name, "loadClass") == 0);
+    return (jmethodID)&load_class_token;
+}
+
+static jobject JNICALL fake_call_object_method(JNIEnv* env, jobject object, jmethodID method, ...) {
+    (void)env;
+    note_call();
+    CHECK(object != NULL);
+    CHECK(method == (jmethodID)&get_loader_token || method == (jmethodID)&load_class_token);
+    return new_ref();
 }
 
 static jstring JNICALL fake_new_string_utf(JNIEnv* env, const char* utf) {
@@ -339,9 +369,11 @@ static void test_native_activity_before_onload(void) {
         void* callbacks;
         JavaVM* vm;
         JNIEnv* env;
-    } activity = {NULL, (JavaVM*)&vm_ptr, (JNIEnv*)&env_ptr};
+        jobject clazz;
+    } activity = {NULL, (JavaVM*)&vm_ptr, (JNIEnv*)&env_ptr, (jobject)&method_token};
 
     reset("ANativeActivity_onCreate before JNI_OnLoad");
+    fake.bridge_find_class_fails = 1;
     fake.call_result = JNI_VERSION_1_6;
     fake.boolean_result = JNI_TRUE;
     on_create(&activity, (void*)0x5678, 9);
@@ -407,10 +439,13 @@ int main(int argc, char** argv) {
     proxy_path = argv[1];
 
     env_table.FindClass = fake_find_class;
+    env_table.GetObjectClass = fake_get_object_class;
+    env_table.GetMethodID = fake_get_method_id;
     env_table.GetStaticMethodID = fake_get_static_method_id;
     env_table.NewStringUTF = fake_new_string_utf;
     env_table.CallStaticIntMethod = fake_call_static_int_method;
     env_table.CallStaticBooleanMethod = fake_call_static_boolean_method;
+    env_table.CallObjectMethod = fake_call_object_method;
     env_table.DeleteLocalRef = fake_delete_local_ref;
     env_table.ExceptionCheck = fake_exception_check;
     env_table.ExceptionClear = fake_exception_clear;

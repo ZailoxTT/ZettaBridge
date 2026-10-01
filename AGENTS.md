@@ -1809,3 +1809,24 @@ SHA-256 `3db0911d8020fff60fa216019077a4ddd7e85cac49401c839896044e51b3b9db`.
 five-second ANR should be gone and `jni-input-queue` should show balanced `get` and `finish` after
 the touch. If the activity instead fails during creation, preserve logcat plus Last run report;
 the likely boundary would then be class lookup during the activity-first bootstrap.
+
+### Activity-first class-loader follow-up ready
+
+The next Lane Racer run confirmed that boundary: the activity-first path executed, but direct
+`FindClass("com/zettabridge/core/ZBridge")` used the framework/system loader and failed before
+callbacks were installed. The report still had no `jni-input-queue`, and logcat recorded both the
+class lookup failure and the proxy-load refusal.
+
+The activity-first path now obtains the plugin `ClassLoader` from the host Activity and calls its
+`loadClass("com.zettabridge.core.ZBridge")`; `PluginClassLoader` already delegates that namespace
+to the launcher. Both the proxy-load and activity-created calls reuse this resolved class. The
+JNI_OnLoad-first path retains direct `FindClass`. The fake-JNI test deliberately makes direct
+ZBridge lookup fail in activity-first order, observed RED, and now passes through the activity
+loader. Host 54/54, Android proxy structure, launcher bundle and signed release build pass.
+
+Ready launcher: `android/launcher/app/build/outputs/apk/release/app-release.apk`, 6,718,276 bytes,
+SHA-256 `90b288fec59ef291ae5ac9b85e580fe716ec99c7560b8ba23bf30a9d480e4e23`.
+
+**NEXT/device gate:** install, force-stop and tap in either Unity game. Success means no five-second
+ANR and a `jni-input-queue` line with balanced `get`/`finish`. Preserve logcat and Last run report
+if activity creation still fails or the counters do not balance.
