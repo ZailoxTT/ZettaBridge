@@ -368,9 +368,19 @@ GuestJniEngine::GuestJniEngine(JniBackend& backend, GlBackend* gl_backend, HostG
             *runtime_,
             // A lifecycle callback is native code called from Java, so it goes through the same
             // transition as any bound native method: a local frame on this thread's carrier.
-            [jni_for_activity](std::uint32_t function, const GuestCall& args) -> std::optional<std::uint32_t> {
+            //
+            // The JNIEnv comes from the thread itself, not from HostJni's current transition:
+            // these calls arrive straight from Java (ZBridge.onNativeActivityCreated) and from the
+            // framework's own callbacks, where there is no transition in progress and
+            // current_env() is nothing. Passing that to call_native crashed the process inside the
+            // activity entry on the device.
+            [jni_for_activity, java = &backend_](std::uint32_t function,
+                                                const GuestCall& args) -> std::optional<std::uint32_t> {
+                JniBackend::Env env = jni_for_activity->current_env();
+                if (env == 0) env = java->attach_current_thread(false, "zb-native-activity", 0);
+                if (env == 0) return std::nullopt;
                 const auto result = jni_for_activity->call_native(
-                    jni_for_activity->current_env(), 'I', function,
+                    env, 'I', function,
                     [&args](std::uint32_t, const RefToHandle&) { return args; });
                 if (!result) return std::nullopt;
                 return result->guest.r0;
