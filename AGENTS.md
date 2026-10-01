@@ -1632,3 +1632,27 @@ copy to `/sdcard`. The report the phone writes is
 `/storage/emulated/0/Android/data/com.zettabridge.launcher/files/zb-runtime-report.txt`;
 `su -c "logcat -b all --pid=$(su -c pidof com.zettabridge.launcher:guest)"` is the only way to see
 the guest's own log, because the ROM drops third-party logcat.
+
+## 2026-10-01: signal/syscall/file-I/O race stress test does not reproduce locally
+
+The planned host-side reproduction is implemented as `guest/tests/sigio_race_dynamic.c` and runs
+in the normal guest suite. Three guest threads each perform 1,000 patterned `pread` checks, an
+`SA_RESTART` `sem_wait`, and an untimed raw futex wait. A fourth thread continuously sends
+`SIGUSR1` to every worker while the main thread releases the semaphore and futex phases. The test
+fails on a wrong byte, a short/error read, any leaked `EINTR`, another unexpected wait result, no
+signal observed in either wait phase, missing progress, or its 30-second alarm.
+
+Results on the current `codex/unity-signals` / `7c647a4` runtime:
+
+- one focused run: 3,000/3,000 worker iterations, both wait phases signalled, zero errors;
+- 100 consecutive focused runs: 0 failures (300,000 worker iterations total);
+- the complete guest suite, including the new case: PASS;
+- `tools/build_guest.sh` now links the already-existing `zlib_dynamic` probe with `-lz`; without
+  that, a clean guest rebuild failed before reaching any test.
+
+This evidence does **not** reproduce the Unity variability on the host and therefore does not
+justify another signal-restart change. The restart PC/register path and the basic concurrent
+file-read/semaphore/futex combination survive this workload. The next useful step is to run the
+same stress shape inside the Android app process, where ART/libsigchain and process-directed host
+signals are present, or add bounded device-report counters for `EINTR -> restartable -> delivered
+with SA_RESTART -> rewound` transitions and compare a short-frame Unity run with a long one.

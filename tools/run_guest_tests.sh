@@ -43,6 +43,7 @@ run_case signals_dynamic 134
 run_case sigwake_dynamic 0
 run_case cp15_barrier_dynamic 0
 run_case sigrestart_dynamic 0
+run_case sigio_race_dynamic 0 "$GUEST/zb_sigio_race.tmp"
 run_case mremap_dynamic 0
 run_case syscalls_dynamic 0 "$GUEST/zb_syscalls_tmp"
 run_case log_dynamic 0

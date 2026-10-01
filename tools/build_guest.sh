@@ -33,7 +33,9 @@ done
 
 for src in "$ROOT"/guest/tests/*_dynamic.c; do
     name=$(basename "$src" .c)
-    "$CC" -O2 -Wall -o "$OUT/$name" "$src" -llog
+    libs=-llog
+    [ "$name" = zlib_dynamic ] && libs="$libs -lz"
+    "$CC" -O2 -Wall -o "$OUT/$name" "$src" $libs
 done
 
 "$CC" -O2 -Wall -I"$ROOT/core/include" -o "$OUT/zbhost" \
