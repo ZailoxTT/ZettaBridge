@@ -25,7 +25,11 @@ public:
     // ourselves, so the queue is given to a real Android looper on that same thread.
     // `data` is the guest's own value, round-tripped: the looper hands it back from
     // poll, and the guest reads its own word again. No host pointer is involved.
-    virtual void queue_attach_looper(void* queue, std::int32_t ident, void* data) = 0;
+    // `looper` is the real looper the queue belongs to, as HostLooper resolved it; 0
+    // means the calling thread's own. A queue attached to the wrong looper is never
+    // polled, and the framework waits out its five seconds for an event nobody took.
+    virtual void queue_attach_looper(void* queue, std::int32_t ident, void* data,
+                                     std::uint64_t looper) = 0;
     virtual void queue_detach_looper(void* queue) = 0;
 
     // Generated accessors.

@@ -287,12 +287,13 @@ void run_real_looper() {
     CHECK(backend.registrations() == 0);
 
     // Attaching an input queue promotes the thread, and what it already watched moves across.
-    CHECK(looper.ensure_real_looper(guest));
+    std::uint64_t promoted = 0;
+    CHECK(looper.ensure_real_looper(guest, 0, promoted));
     CHECK(backend.prepares() == 1);
     const std::uint64_t real = backend.current();
     CHECK(real != 0 && backend.registered(real, fd));
     // Asking twice changes nothing: the thread already has its looper.
-    CHECK(looper.ensure_real_looper(guest));
+    CHECK(looper.ensure_real_looper(guest, 0, promoted));
     CHECK(backend.prepares() == 1);
 
     // From now on registrations go straight to the real looper.

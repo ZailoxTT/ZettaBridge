@@ -190,7 +190,8 @@ bool HostInput::handle_host_call(std::uint32_t index, GuestThread& thread) {
         // regs[1] is the guest's looper, regs[3] and regs[4] its callback and data. A host
         // AInputQueue has no descriptor we could poll, so this thread must first have a real
         // Android looper; the queue then goes to it and the guest's own poll picks it up.
-        const bool ready = real_looper_ ? real_looper_(thread) : false;
+        std::uint64_t real_looper = 0;
+        const bool ready = real_looper_ ? real_looper_(thread, regs[1], real_looper) : false;
         if (!ready) {
             runtime_report().note_jni_detail("input-attach", "no real looper on this thread", true);
             log("AInputQueue_attachLooper: this thread has no real looper, so the queue will not "
@@ -205,8 +206,11 @@ bool HostInput::handle_host_call(std::uint32_t index, GuestThread& thread) {
         // The guest's data travels as an opaque value and comes back from the poll unchanged, so
         // the guest recognizes its own source. Nothing of the host crosses here.
         backend_.queue_attach_looper(queue, static_cast<std::int32_t>(regs[2]),
-                                     reinterpret_cast<void*>(static_cast<std::uintptr_t>(regs[4])));
-        runtime_report().note_jni_detail("input-attach", "ident " + std::to_string(regs[2]), true);
+                                     reinterpret_cast<void*>(static_cast<std::uintptr_t>(regs[4])), real_looper);
+        runtime_report().note_jni_detail("input-attach",
+                                         "ident " + std::to_string(regs[2]) + " guest-looper 0x" +
+                                             std::to_string(regs[1]) + (real_looper != 0 ? " real" : " no real"),
+                                         true);
         regs[0] = 0;
         return true;
     }

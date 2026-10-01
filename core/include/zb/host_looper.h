@@ -44,11 +44,15 @@ public:
 
     bool handle_host_call(std::uint32_t index, GuestThread& thread);
 
-    // Gives the calling guest thread's looper a real Android looper and moves its registrations
-    // onto it, so a host AInputQueue attached to that thread can be polled at all. A borrower
-    // already runs on one and is unchanged. False when this thread has no looper, or the platform
-    // cannot give it one.
-    bool ensure_real_looper(GuestThread& thread);
+    // Gives a guest looper a real Android looper and moves its registrations onto it, so a host
+    // AInputQueue attached to it can be polled at all. `looper_handle` is the looper the guest
+    // named; 0 means the calling thread's own. The real looper comes back in `real`, because the
+    // queue must be attached to that one and not to whichever thread happens to be calling: a
+    // guest that attaches on one thread and polls on another would otherwise never see its input.
+    //
+    // A looper that belongs to another thread can only be used if that thread already acquired a
+    // real one, because ALooper_prepare works on the calling thread alone.
+    bool ensure_real_looper(GuestThread& thread, std::uint32_t looper_handle, std::uint64_t& real);
 
 private:
     struct Impl;

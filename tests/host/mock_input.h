@@ -52,7 +52,8 @@ public:
         last_handled = handled;
     }
 
-    void queue_attach_looper(void* queue, std::int32_t ident, void* data) override {
+    void queue_attach_looper(void* queue, std::int32_t ident, void* data, std::uint64_t looper) override {
+        attached_looper = looper;
         calls.push_back("attachLooper");
         (void)queue;
         attached_ident = ident;
@@ -81,6 +82,7 @@ public:
     std::int32_t last_handled = -1;
     std::int32_t attached_ident = -1;
     void* attached_data = nullptr;
+    std::uint64_t attached_looper = 0;
     bool attached = false;
 
 private:

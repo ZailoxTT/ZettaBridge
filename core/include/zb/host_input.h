@@ -25,7 +25,8 @@ public:
     // with a real Android looper, because a host AInputQueue has no descriptor we could poll.
     // Without one (the host build, or a platform that refuses) the attach is recorded and the
     // queue simply never delivers, which the report says.
-    using RealLooperRequest = std::function<bool(GuestThread& thread)>;
+    // (thread, the looper handle the guest named, out: the real looper to attach to).
+    using RealLooperRequest = std::function<bool(GuestThread& thread, std::uint32_t looper, std::uint64_t& real)>;
 
     HostInput(LibraryRuntime& runtime, InputBackend& backend, RealLooperRequest real_looper = {})
         : runtime_(runtime), backend_(backend), real_looper_(std::move(real_looper)) {}

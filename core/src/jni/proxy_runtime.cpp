@@ -414,7 +414,9 @@ GuestJniEngine::GuestJniEngine(JniBackend& backend, GlBackend* gl_backend, HostG
     if (input_backend != nullptr) {
         HostLooper* looper = host_looper_;
         host_input_ = new HostInput(*runtime_, *input_backend,
-                                    [looper](GuestThread& thread) { return looper->ensure_real_looper(thread); });
+                                    [looper](GuestThread& thread, std::uint32_t handle, std::uint64_t& real) {
+                                        return looper->ensure_real_looper(thread, handle, real);
+                                    });
     }
     host_compat_ = new HostPlatformCompat();
     if (gl_backend != nullptr) {
