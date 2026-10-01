@@ -709,9 +709,29 @@ struct HostLooper::Impl {
         }
 
         if (attached) {
-            // The guest is asking to run a loop the host thread's Java Looper.loop() already
-            // runs. Blocking here would stall that loop, so report a wake and let the guest
-            // return; its callbacks arrive through attached_callback instead.
+            // A guest running on a borrowed carrier is running on a Java thread, and the real
+            // looper of that thread is the application's own: an input queue attached to it is
+            // polled by Java's message loop, which knows nothing of the ident the guest waits
+            // for. Asking the queues directly is what turns that into the answer the guest
+            // expects. Unity's NativeActivity path lives entirely on this thread, so without it
+            // the touch sat in the queue until the framework gave up on the whole app.
+            if (input_probe) {
+                std::uint64_t real_handle = 0;
+                {
+                    std::lock_guard<std::mutex> lock(mutex);
+                    const auto looper_it = loopers.find(looper_handle);
+                    if (looper_it != loopers.end()) real_handle = looper_it->second->real;
+                }
+                if (const std::optional<InputReady> ready = input_probe(real_handle)) {
+                    if (out_fd != 0) write_guest_word(out_fd, static_cast<std::uint32_t>(-1));
+                    if (out_events != 0) write_guest_word(out_events, static_cast<std::uint32_t>(kEventInput));
+                    if (out_data != 0) write_guest_word(out_data, ready->data);
+                    return finish(ready->ident);
+                }
+            }
+            // Otherwise the guest is asking to run a loop the host thread's Java Looper.loop()
+            // already runs. Blocking here would stall that loop, so report a wake and let the
+            // guest return; its callbacks arrive through attached_callback instead.
             static std::atomic<bool> logged{false};
             if (!logged.exchange(true)) {
                 log("ALooper_pollOnce on a looper owned by the host thread's Android looper: "

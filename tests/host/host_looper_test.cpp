@@ -212,6 +212,24 @@ void run_borrower() {
                                          1000, 0, 0, 0)) == -1);
     CHECK(invocations.empty());
 
+    // An input queue attached to a borrower's looper belongs to the application's own message
+    // loop, which knows nothing of the ident the guest waits for. A poll asks the queues instead,
+    // and answers with the ident and the guest's own data; without that the guest waits forever
+    // and the framework declares the app unresponsive.
+    looper.set_input_probe([&](std::uint64_t real_looper) -> std::optional<zb::HostLooper::InputReady> {
+        if (real_looper != real) return std::nullopt;
+        return zb::HostLooper::InputReady{7, 0xF00D};
+    });
+    guest_u32(runtime.memory(), kGuestPage + 0x60, 0);
+    guest_u32(runtime.memory(), kGuestPage + 0x64, 0);
+    CHECK(static_cast<std::int32_t>(call(looper, borrower, zb::ZB_COMPAT_HC_ALooper_pollOnce, 0, 0,
+                                         kGuestPage + 0x60, kGuestPage + 0x64)) == 7);
+    CHECK(guest_u32(runtime.memory(), kGuestPage + 0x60) == 1);       // ALOOPER_EVENT_INPUT
+    CHECK(guest_u32(runtime.memory(), kGuestPage + 0x64) == 0xF00D);  // the guest's own data
+    looper.set_input_probe({});
+    CHECK(static_cast<std::int32_t>(call(looper, borrower, zb::ZB_COMPAT_HC_ALooper_pollOnce,
+                                         1000, 0, 0, 0)) == -1);
+
     // A host callback delivered by the real looper runs the guest callback with (fd, events, data).
     CHECK(backend.deliver(real, fd, 1) == 1);
     CHECK(invocations.size() == 1);
