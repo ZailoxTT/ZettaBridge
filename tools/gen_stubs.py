@@ -198,6 +198,17 @@ def looper_pollall_names():
     return ["ALooper_pollAll"]
 
 
+def unsupported_entry_names():
+    """One stub for every GL or EGL entry point we do not implement.
+
+    eglGetProcAddress used to answer such a name with zero, and an engine that stores the result
+    and calls it without checking jumps to address zero: Unity died exactly that way, far from the
+    probe, after mono turned the illegal instruction into an exception. Handing out a stub that
+    does nothing and returns zero is what a driver without the extension behaves like.
+    """
+    return ["zbUnsupportedEntryPoint"]
+
+
 def configuration_names():
     """Every AConfiguration_* entry point of the NDK header."""
     names = set()
@@ -233,6 +244,8 @@ LIBRARIES = [
     ("libandroid", configuration_names),
     # ALooper_pollAll, last: Unity 4.5 imports it and nothing else here does.
     ("libandroid", looper_pollall_names),
+    # The catch-all entry point eglGetProcAddress hands out for a name we do not implement.
+    ("libGLESv2", unsupported_entry_names),
     # GLES 1.1: linked by Unity 4.5, so the library has to exist for the guest to load at all.
     ("libGLESv1_CM", gles1_names),
 ]

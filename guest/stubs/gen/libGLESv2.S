@@ -2074,3 +2074,11 @@ glTexStorage3DEXT:
     svc #0x5a0157
     bx lr
 .size glTexStorage3DEXT, . - glTexStorage3DEXT
+
+.global zbUnsupportedEntryPoint
+.type zbUnsupportedEntryPoint, %function
+.p2align 2
+zbUnsupportedEntryPoint:
+    svc #0x5a01ec
+    bx lr
+.size zbUnsupportedEntryPoint, . - zbUnsupportedEntryPoint

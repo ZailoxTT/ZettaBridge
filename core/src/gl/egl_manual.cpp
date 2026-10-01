@@ -282,11 +282,16 @@ bool zbegl_manual_eglGetProcAddress(HostEgl& host, HostEgl::Call& call) {
     // Only our own gl*/egl* stubs may be handed out, never an arbitrary guest symbol. The guest
     // gets the address of a trap stub, never a host function pointer.
     const bool ours = name.rfind("egl", 0) == 0 || name.rfind("gl", 0) == 0;
-    const std::uint32_t address = ours ? host.stub_address(name) : 0;
+    std::uint32_t address = ours ? host.stub_address(name) : 0;
+    // A name of ours that has no stub still gets a callable address: one that does nothing and
+    // returns zero. An engine that stores the result and calls it without checking - Unity does -
+    // otherwise jumps to address zero and dies far from here.
+    const bool missing = ours && address == 0;
+    if (missing) address = host.stub_address("zbUnsupportedEntryPoint");
     call.set_result(address);
     // A miss is what an engine sees as "this GL function does not exist", so name the first few:
     // they are the exact list a later GLES 3 generator pass has to cover.
-    if (address == 0) {
+    if (missing) {
         // The first 8 misses name what the engine probed early; the last 8 are kept in a ring
         // because the miss that kills a guest is usually late (Impeller stores a proc table and
         // calls through it without a null check, long after the first probe).

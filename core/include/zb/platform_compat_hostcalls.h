@@ -25,5 +25,9 @@ inline constexpr std::uint32_t ZB_COMPAT_HC_ALooper_wake = 227u;
 // Appended after the input and configuration ranges: ALooper_pollAll is gone from the NDK headers
 // but Unity 4.5 still imports it, and it was added once a real guest asked for it.
 inline constexpr std::uint32_t ZB_COMPAT_HC_ALooper_pollAll = 491u;
+// What eglGetProcAddress hands out for a GL or EGL name this bridge does not implement: a stub
+// that does nothing and answers zero. Returning a null address instead makes an engine that
+// stores the result and calls it without checking jump to address zero.
+inline constexpr std::uint32_t ZB_COMPAT_HC_UnsupportedEntryPoint = 492u;
 
 }  // namespace zb
