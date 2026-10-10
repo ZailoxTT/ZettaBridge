@@ -731,6 +731,14 @@ static jint zbjni_GetJavaVM(JNIEnv* env, JavaVM** vm) {
     return JNI_OK;
 }
 
+/* JNI invocation API: guest system libraries (the OpenSL ES library) find the VM through this,
+ * as they would on a real device. There is exactly one VM. */
+__attribute__((visibility("default"))) jint JNI_GetCreatedJavaVMs(JavaVM** vms, jsize size, jsize* count) {
+    if (count != NULL) *count = 1;
+    if (vms != NULL && size > 0) vms[0] = (JavaVM*)(uintptr_t)&zbjni_java_vm;
+    return JNI_OK;
+}
+
 static uint32_t zbjni_new_env(void) {
     JNIEnv* env = malloc(sizeof *env);
     if (env != NULL) *env = &zbjni_native_interface;
