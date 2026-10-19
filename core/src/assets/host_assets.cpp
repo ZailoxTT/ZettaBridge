@@ -53,7 +53,7 @@ std::uint64_t HostAssets::require_asset(std::uint32_t handle) const {
 
 std::uint32_t HostAssets::asset_buffer(std::uint64_t asset) {
     const auto cached = asset_buffers_.find(asset);
-    if (cached != asset_buffers_.end()) return cached->second;
+    if (cached != asset_buffers_.end()) return cached->second.address;
 
     const std::int64_t length = backend_.length(asset);
     const void* host = backend_.buffer(asset);
@@ -66,24 +66,44 @@ std::uint32_t HostAssets::asset_buffer(std::uint64_t asset) {
         log("AAsset_getBuffer: %llu bytes exceed the buffer budget", static_cast<unsigned long long>(size));
         return 0;
     }
-    // Guest malloc runs guest code on this thread; HostAssets holds no lock here.
-    GuestCall args;
-    args.regs = {static_cast<std::uint32_t>(size), 0, 0, 0};
-    const auto allocated = runtime_.call_on_current(runtime_.service_api().malloc_fn, args);
-    if (!allocated || allocated->r0 == 0) {
+    std::uint32_t address = 0;
+    if (allocator_) {
+        address = allocator_(size).value_or(0);
+    } else {
+        // Guest malloc runs guest code on this thread; HostAssets holds no lock here.
+        GuestCall args;
+        args.regs = {static_cast<std::uint32_t>(size), 0, 0, 0};
+        const auto allocated = runtime_.call_on_current(runtime_.service_api().malloc_fn, args);
+        if (allocated) address = allocated->r0;
+    }
+    if (address == 0) {
         log("AAsset_getBuffer: the guest allocator refused %llu bytes",
             static_cast<unsigned long long>(size));
         return 0;
     }
-    std::uint8_t* destination = runtime_.memory().host_ptr(allocated->r0, size, kPageRead | kPageWrite);
+    std::uint8_t* destination = runtime_.memory().host_ptr(address, size, kPageRead | kPageWrite);
     if (destination == nullptr) {
         log("AAsset_getBuffer: the guest allocator returned an unusable buffer");
         return 0;
     }
     std::memcpy(destination, host, size);
-    asset_buffers_.emplace(asset, allocated->r0);
+    asset_buffers_.emplace(asset, AssetBuffer{address, size});
     buffered_bytes_ += size;
-    return allocated->r0;
+    return address;
+}
+
+void HostAssets::release_asset_buffer(std::uint64_t asset) {
+    const auto cached = asset_buffers_.find(asset);
+    if (cached == asset_buffers_.end()) return;
+    if (deallocator_) {
+        deallocator_(cached->second.address);
+    } else {
+        GuestCall args;
+        args.regs = {cached->second.address, 0, 0, 0};
+        (void)runtime_.call_on_current(runtime_.service_api().free_fn, args);
+    }
+    buffered_bytes_ -= cached->second.size;
+    asset_buffers_.erase(cached);
 }
 
 bool HostAssets::handle_host_call(std::uint32_t index, GuestThread& thread) {
@@ -110,7 +130,10 @@ bool HostAssets::handle_host_call(std::uint32_t index, GuestThread& thread) {
     }
     case ZB_ASSET_HC_AAsset_close: {
         const std::optional<std::uint64_t> asset = assets_.remove(regs[0]);
-        if (asset && *asset != 0) backend_.close(*asset);
+        if (asset && *asset != 0) {
+            release_asset_buffer(*asset);
+            backend_.close(*asset);
+        }
         regs[0] = 0;
         return true;
     }

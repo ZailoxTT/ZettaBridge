@@ -6,6 +6,9 @@
 
 #include <cstdint>
 #include <cstring>
+#include <optional>
+#include <string>
+#include <vector>
 
 #include <dynarmic/interface/exclusive_monitor.h>
 
@@ -132,6 +135,60 @@ int main() {
     thread.regs()[0] = asset;
     CHECK(assets.handle_host_call(zb::ZB_ASSET_HC_AAsset_getBuffer, thread));
     CHECK(thread.regs()[0] == 0);
+
+    // AAsset_getBuffer copies are freed on AAsset_close. The NDK reuses a closed AAsset*, so a copy
+    // cached past close would be handed to the next asset opened at that address (an engine that
+    // expands #include through getBuffer then compiled one include's text twice). A test
+    // allocator stands in for the guest malloc this harness does not have.
+    auto* reusing = new MockAssetBackend();
+    reusing->reuse_handles = true;
+    reusing->add_file("assets/a.sh", "uniform lowp sampler2D BASEMAP;");
+    reusing->add_file("assets/b.sh", "vec3 rotate(mat3 m, vec3 v) { return m * v; }");
+    CHECK(runtime.memory().map_anon(0x14000, 0x2000, PROT_READ | PROT_WRITE));
+    std::uint32_t next_free = 0x14000;
+    std::vector<std::uint32_t> freed;
+    zb::HostAssets buffered(
+        runtime, *reusing, engine->host_jni(),
+        [&](std::uint64_t size) -> std::optional<std::uint32_t> {
+            const std::uint32_t address = next_free;
+            next_free += static_cast<std::uint32_t>((size + 15) & ~std::uint64_t{15});
+            return address;
+        },
+        [&](std::uint32_t address) { freed.push_back(address); });
+
+    thread.regs()[0] = 0;
+    thread.regs()[1] = 0;
+    CHECK(buffered.handle_host_call(zb::ZB_ASSET_HC_AAssetManager_fromJava, thread));
+    const std::uint32_t reusing_manager = thread.regs()[0];
+    const auto open_buffer = [&](std::uint32_t name_addr, const std::string& name, std::uint32_t& handle) {
+        write_guest_string(runtime, name_addr, name);
+        thread.regs()[0] = reusing_manager;
+        thread.regs()[1] = name_addr;
+        thread.regs()[2] = 3;  // AASSET_MODE_BUFFER
+        CHECK(buffered.handle_host_call(zb::ZB_ASSET_HC_AAssetManager_open, thread));
+        handle = thread.regs()[0];
+        CHECK(handle != 0);
+        thread.regs()[0] = handle;
+        CHECK(buffered.handle_host_call(zb::ZB_ASSET_HC_AAsset_getBuffer, thread));
+        return thread.regs()[0];
+    };
+    const auto guest_text = [&](std::uint32_t address, const std::string& expected) {
+        const std::uint8_t* bytes = runtime.memory().host_ptr(address, expected.size(), zb::kPageRead);
+        return bytes != nullptr && std::memcmp(bytes, expected.data(), expected.size()) == 0;
+    };
+
+    std::uint32_t handle_a = 0;
+    const std::uint32_t buffer_a = open_buffer(0x11400, "assets/a.sh", handle_a);
+    CHECK(buffer_a != 0);
+    CHECK(guest_text(buffer_a, "uniform lowp sampler2D BASEMAP;"));
+    thread.regs()[0] = handle_a;
+    CHECK(buffered.handle_host_call(zb::ZB_ASSET_HC_AAsset_close, thread));
+    CHECK(freed.size() == 1 && freed[0] == buffer_a);
+
+    std::uint32_t handle_b = 0;
+    const std::uint32_t buffer_b = open_buffer(0x11500, "assets/b.sh", handle_b);
+    CHECK(buffer_b != 0);
+    CHECK(guest_text(buffer_b, "vec3 rotate(mat3 m, vec3 v) { return m * v; }"));
 
     std::puts("asset_chain_test PASS");
     return 0;

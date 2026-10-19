@@ -24,7 +24,12 @@ public:
         if (manager != kManagerHandle) return 0;
         auto it = files_.find(filename);
         if (it == files_.end()) return 0;
-        const std::uint64_t handle = next_asset_++;
+        std::uint64_t handle = next_asset_++;
+        if (reuse_handles) {
+            // The NDK frees the AAsset on close, so the allocator hands its address to the next open.
+            handle = 1;
+            while (open_.count(handle) != 0) ++handle;
+        }
         open_[handle] = {it->second, 0};
         return handle;
     }
@@ -71,6 +76,8 @@ public:
     int fake_fd = 3;
     std::int64_t fake_fd_start = 1000;
     std::int64_t fake_fd_length = 42;
+    // Hand a closed asset's handle to the next open, like the NDK's reused AAsset*.
+    bool reuse_handles = false;
 
 private:
     struct OpenAsset {
