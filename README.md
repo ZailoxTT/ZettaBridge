@@ -3,7 +3,7 @@
 # ZettaBridge
 
 **Run 32-bit Android apps on 64-bit-only ARM phones.**
-An open-source ARM32 -> ARM64 native code translator and app launcher.
+An source-available ARM32 -> ARM64 native code translator and app launcher.
 
 [Читать на русском](README.ru.md)
 
