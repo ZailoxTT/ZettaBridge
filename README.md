@@ -1,3 +1,5 @@
+## I’ve had very little free time over the last couple of weeks. Some fixes are still sitting on my device. Don’t worry – development is continuing, and your bug reports with logs are a great help.
+
 # ZettaBridge
 
 **Run 32-bit Android apps on 64-bit-only ARM phones.**
