@@ -67,6 +67,14 @@ int main() {
     CHECK(assets.handle_host_call(zb::ZB_ASSET_HC_AAsset_getLength, thread));
     CHECK(thread.regs()[0] == std::strlen("hello asset bridge"));
 
+    // AAsset_getLength64 returns off64_t in r0:r1. r1 is preset to garbage so a handler that only
+    // writes r0 fails here.
+    thread.regs()[0] = asset;
+    thread.regs()[1] = 0xDEADBEEFu;
+    CHECK(assets.handle_host_call(zb::ZB_ASSET_HC_AAsset_getLength64, thread));
+    CHECK(thread.regs()[0] == std::strlen("hello asset bridge"));
+    CHECK(thread.regs()[1] == 0);
+
     const std::uint32_t buffer_addr = 0x11100;
     thread.regs()[0] = asset;
     thread.regs()[1] = buffer_addr;
@@ -115,6 +123,10 @@ int main() {
     thread.regs()[0] = asset;
     CHECK(assets.handle_host_call(zb::ZB_ASSET_HC_AAsset_getLength, thread));
     CHECK(static_cast<std::int32_t>(thread.regs()[0]) == -1);
+
+    thread.regs()[0] = asset;
+    CHECK(assets.handle_host_call(zb::ZB_ASSET_HC_AAsset_getLength64, thread));
+    CHECK(thread.regs()[0] == 0xFFFFFFFFu && thread.regs()[1] == 0xFFFFFFFFu);
 
     thread.regs()[0] = asset;
     thread.regs()[1] = buffer_addr;

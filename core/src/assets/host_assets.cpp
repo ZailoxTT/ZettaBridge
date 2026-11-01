@@ -128,6 +128,15 @@ bool HostAssets::handle_host_call(std::uint32_t index, GuestThread& thread) {
         regs[0] = static_cast<std::uint32_t>(static_cast<std::int32_t>(length));
         return true;
     }
+    case ZB_ASSET_HC_AAsset_getLength64: {
+        // off64_t comes back in r0:r1 (AAPCS32 64-bit return, low word first).
+        const std::uint64_t asset = require_asset(regs[0]);
+        const std::int64_t length = asset != 0 ? backend_.length(asset) : -1;
+        const auto bits = static_cast<std::uint64_t>(length);
+        regs[0] = static_cast<std::uint32_t>(bits);
+        regs[1] = static_cast<std::uint32_t>(bits >> 32);
+        return true;
+    }
     case ZB_ASSET_HC_AAsset_read: {
         const std::uint64_t asset = require_asset(regs[0]);
         const std::uint32_t buf_addr = regs[1];
