@@ -1,6 +1,9 @@
 package com.zettabridge.launcher;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ContextParams;
 import android.content.ContextWrapper;
 import android.content.pm.ApplicationInfo;
@@ -10,7 +13,9 @@ import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.database.DatabaseErrorHandler;
 import android.database.sqlite.SQLiteDatabase;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.view.Display;
 import android.view.LayoutInflater;
 
@@ -53,6 +58,42 @@ final class PluginContext extends ContextWrapper {
         Resources pluginResources = new Resources(plugin.resources.getAssets(), host.getDisplayMetrics(),
                 host.getConfiguration());
         return new PluginContext(frameworkContext, plugin, pluginResources);
+    }
+
+    /*
+     * Dynamic receivers. Android 14 requires RECEIVER_EXPORTED or RECEIVER_NOT_EXPORTED from
+     * apps targeting SDK 34+, and the caller's target SDK is the launcher's. Plugins built for
+     * older SDKs never pass either flag; for them Android treated every receiver as exported,
+     * so that is what an unflagged registration keeps meaning here.
+     */
+    private static int receiverFlags(int flags) {
+        if (Build.VERSION.SDK_INT >= 33
+                && (flags & (Context.RECEIVER_EXPORTED | Context.RECEIVER_NOT_EXPORTED)) == 0) {
+            flags |= Context.RECEIVER_EXPORTED;
+        }
+        return flags;
+    }
+
+    @Override
+    public Intent registerReceiver(BroadcastReceiver receiver, IntentFilter filter) {
+        return super.registerReceiver(receiver, filter, receiverFlags(0));
+    }
+
+    @Override
+    public Intent registerReceiver(BroadcastReceiver receiver, IntentFilter filter, int flags) {
+        return super.registerReceiver(receiver, filter, receiverFlags(flags));
+    }
+
+    @Override
+    public Intent registerReceiver(BroadcastReceiver receiver, IntentFilter filter, String permission,
+            Handler scheduler) {
+        return super.registerReceiver(receiver, filter, permission, scheduler, receiverFlags(0));
+    }
+
+    @Override
+    public Intent registerReceiver(BroadcastReceiver receiver, IntentFilter filter, String permission,
+            Handler scheduler, int flags) {
+        return super.registerReceiver(receiver, filter, permission, scheduler, receiverFlags(flags));
     }
 
     @Override
