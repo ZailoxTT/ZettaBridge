@@ -80,7 +80,10 @@ done
 
 for asm in "$ROOT"/guest/stubs/gen/*.S; do
     lib=$(basename "$asm" .S)
-    "$CC" -shared -nostdlib -Wl,-soname,"$lib.so" -o "$OUT/lib/$lib.so" "$asm"
+    # Optional hand-written additions, built -nostdlib like the generated half.
+    extra=""
+    [ -f "$ROOT/guest/stubs/extra/${lib}_extra.c" ] && extra="$ROOT/guest/stubs/extra/${lib}_extra.c"
+    "$CC" -shared -nostdlib -O2 -fno-stack-protector -Wl,-soname,"$lib.so" -o "$OUT/lib/$lib.so" "$asm" $extra
 done
 
 # End-to-end callback ALooper probe. -L precedes the NDK sysroot so -landroid resolves to the
