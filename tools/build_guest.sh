@@ -13,6 +13,7 @@
 #   guest/zbjni/zbjni.c         -> build/guest/lib/libzbjni.so (guest JNIEnv/JavaVM)
 #   guest/stubs/gen/*.S         -> build/guest/lib/<lib>.so host-call stub libraries
 #   guest/compat/zbcompat.c     -> build/guest/lib/libzbcompat.so
+#   guest/opensles/opensles.c   -> build/guest/lib/libOpenSLES.so
 set -eu
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -90,6 +91,11 @@ done
     -L"$OUT/lib" -landroid
 
 "$CC" -shared -O2 -Wall -Wl,-soname,libzbcompat.so -o "$OUT/lib/libzbcompat.so" "$ROOT/guest/compat/zbcompat.c"
+
+# OpenSL ES for guests: buffer-queue players mixed in software onto one java AudioTrack,
+# Android FD players backed by MediaPlayer, both through the guest JNIEnv.
+"$CC" -shared -fPIC -O2 -Wall -Wextra -fvisibility=hidden -Wl,-soname,libOpenSLES.so \
+    -o "$OUT/lib/libOpenSLES.so" "$ROOT/guest/opensles/opensles.c" -llog -ldl -lm
 
 # EGL/window probe for egl_chain_test (Phase 7a Task 9). Built as a shared library so
 # LibraryRuntime can dlopen it and call its "main" symbol directly, the same way the
