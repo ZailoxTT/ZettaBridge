@@ -162,6 +162,18 @@ final class PluginContext extends ContextWrapper {
         return super.getSystemService(name);
     }
 
+    @Override
+    public int checkSelfPermission(String permission) {
+        if (!PermissionPolicy.allows(plugin.record, permission)) return PackageManager.PERMISSION_DENIED;
+        return super.checkSelfPermission(permission);
+    }
+
+    @Override
+    public int checkPermission(String permission, int pid, int uid) {
+        if (!PermissionPolicy.allows(plugin.record, permission)) return PackageManager.PERMISSION_DENIED;
+        return super.checkPermission(permission, pid, uid);
+    }
+
     // Storage: each plugin gets filesDir/plugins/<package>/data and its own external subdirectory.
 
     private File dir(String name) {

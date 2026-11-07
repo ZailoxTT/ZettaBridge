@@ -129,6 +129,21 @@ final class GuestRuntime {
         return n != null && n > 0;
     }
 
+    boolean allowsPluginPermission(String packageName, String permission) {
+        LoadedPlugin plugin = current();
+        if (plugin == null
+                || (!plugin.packageName.equals(packageName) && !host.getPackageName().equals(packageName))) {
+            return false;
+        }
+        return PermissionPolicy.allows(plugin.record, permission);
+    }
+
+    boolean currentPluginBelongsTo(String packageName) {
+        LoadedPlugin plugin = current();
+        return plugin != null
+                && (plugin.packageName.equals(packageName) || host.getPackageName().equals(packageName));
+    }
+
     /** Rewrites an intent that names a plugin activity to the matching stub; others pass through. */
     Intent route(Intent intent) {
         if (intent == null || intent.getComponent() == null) return intent;

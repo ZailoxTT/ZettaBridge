@@ -115,6 +115,16 @@ final class PackageManagerHook implements InvocationHandler {
                     return withPluginVersion((PackageInfo) result);
                 }
                 return result;
+            case "checkPermission":
+                if (args.length >= 2 && args[1] instanceof String
+                        && runtime.allowsPluginPermission((String) args[1], (String) args[0])) {
+                    return result;
+                }
+                if (args.length >= 2 && args[1] instanceof String
+                        && runtime.currentPluginBelongsTo((String) args[1])) {
+                    return PackageManager.PERMISSION_DENIED;
+                }
+                return result;
             default:
                 return result;
         }
