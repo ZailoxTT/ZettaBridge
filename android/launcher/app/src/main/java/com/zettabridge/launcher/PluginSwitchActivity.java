@@ -23,6 +23,8 @@ public class PluginSwitchActivity extends Activity {
     private static final String EXTRA_PACKAGE = "zb.package";
     private static final int WAIT_STEPS = 40;
     private static final long WAIT_STEP_MS = 50;
+    private static final int REQUEST_PLUGIN_PERMISSIONS = 1002;
+    private String pendingPackageName;
 
     static Intent intent(Context context, String packageName) {
         return new Intent(Intent.ACTION_MAIN)
@@ -42,6 +44,21 @@ public class PluginSwitchActivity extends Activity {
             return;
         }
         String active = ActivePlugin.of(this);
+        pendingPackageName = packageName;
+        if (requestEnabledPermissions(packageName)) return;
+        continueLaunch(packageName, active);
+    }
+
+    private boolean requestEnabledPermissions(String packageName) {
+        PluginRecord record = PluginStore.find(this, packageName);
+        if (record == null) return false;
+        java.util.List<String> missing = PermissionPolicy.missingPermissions(this, record);
+        if (missing.isEmpty()) return false;
+        requestPermissions(missing.toArray(new String[0]), REQUEST_PLUGIN_PERMISSIONS);
+        return true;
+    }
+
+    private void continueLaunch(String packageName, String active) {
         if (packageName.equals(active)) {
             // The guest process already holds this plugin: launching brings its task to the front.
             startGuest(packageName, false);
@@ -56,6 +73,28 @@ public class PluginSwitchActivity extends Activity {
         Toast.makeText(this, "Closing the previous game...", Toast.LENGTH_SHORT).show();
         ActivePlugin.endGuestProcess(this);
         waitForGuestToGo(0, packageName);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
+        super.onRequestPermissionsResult(requestCode, permissions, results);
+        if (requestCode != REQUEST_PLUGIN_PERMISSIONS || pendingPackageName == null) return;
+        PluginRecord record = PluginStore.find(this, pendingPackageName);
+        if (record != null) {
+            for (int i = 0; i < permissions.length; i++) {
+                if (results[i] != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    record.grantedPermissions.remove(permissions[i]);
+                }
+            }
+            try {
+                record.save();
+            } catch (java.io.IOException e) {
+                Diagnostics.report(this, "cannot save permission result", e, false);
+            }
+        }
+        String packageName = pendingPackageName;
+        pendingPackageName = null;
+        continueLaunch(packageName, ActivePlugin.of(this));
     }
 
     /** The new process must not start before the old one is gone, or it inherits the old plugin. */

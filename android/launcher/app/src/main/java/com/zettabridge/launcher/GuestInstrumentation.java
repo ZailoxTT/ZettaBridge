@@ -74,7 +74,7 @@ final class GuestInstrumentation extends Instrumentation {
         } catch (NoSuchMethodException e) {
             throw new IllegalStateException("Instrumentation.execStartActivity not found", e);
         }
-        Intent routed = runtime.route(intent);
+        Intent routed = runtime.prepareCameraIntent(runtime.route(intent));
         return (ActivityResult) Reflect.invoke(execStartActivity, base, who, contextThread, token, target, routed,
                 requestCode, options);
     }
@@ -89,7 +89,7 @@ final class GuestInstrumentation extends Instrumentation {
         } catch (NoSuchMethodException e) {
             throw new IllegalStateException("Instrumentation.execStartActivity(String) not found", e);
         }
-        Intent routed = runtime.route(intent);
+        Intent routed = runtime.prepareCameraIntent(runtime.route(intent));
         return (ActivityResult) Reflect.invoke(execStartActivityFromString, base, who, contextThread, token, target,
                 routed, requestCode, options);
     }

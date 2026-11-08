@@ -22,7 +22,8 @@ import com.zettabridge.core.ZBridge;
 /** Imported plugins on disk. Import is staged and published only after every native fixup succeeds. */
 final class PluginStore {
     static final int ARCHIVE_FLAGS = PackageManager.GET_ACTIVITIES | PackageManager.GET_PROVIDERS
-            | PackageManager.GET_SERVICES | PackageManager.GET_RECEIVERS | PackageManager.GET_META_DATA;
+            | PackageManager.GET_SERVICES | PackageManager.GET_RECEIVERS | PackageManager.GET_META_DATA
+            | PackageManager.GET_PERMISSIONS;
 
     private PluginStore() {}
 
@@ -93,6 +94,9 @@ final class PluginStore {
             r.versionName = info.versionName;
             ApplicationInfo ai = applicationInfo(info, r);
             r.targetSdk = ai.targetSdkVersion;
+            if (info.requestedPermissions != null) {
+                r.requestedPermissions.addAll(java.util.Arrays.asList(info.requestedPermissions));
+            }
             r.abis.addAll(PluginFiles.scanAbis(apk));
             r.selectedAbi = PluginFiles.selectAbi(r.abis);
             if (r.selectedAbi != null) {

@@ -1860,3 +1860,16 @@ Report lines that localize this area: `jni-input-attach` (ident, looper, owner a
 reproducible one: whichever control is pressed first keeps working, and the other one ends the
 process - the shape of something initialized once, for one path only. The abort message in the
 native dump is the next piece of evidence; the report does not carry it.
+
+### 2026-11-07: per-plugin Android permission policy
+
+- Importing a plugin records the dangerous permissions declared by its APK. The launcher
+  presents only runtime permissions that are usable on the current Android API level.
+- The library screen has a Permissions action for each plugin; preferences are stored
+  independently in `meta.properties` and runtime grants are requested before launch.
+- Android API 33+ storage uses the media permissions. API 29-32 uses legacy external-storage
+  permissions. Nearby-device, Bluetooth, notification and storage permissions are filtered by
+  API level.
+- This policy masks Java and PackageManager permission checks inside the guest process.
+  Native Binder isolation is not guaranteed because guest and launcher plugins share the
+  launcher UID. Complete hardware isolation requires native permission bridge coverage.

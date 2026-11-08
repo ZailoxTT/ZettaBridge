@@ -33,6 +33,10 @@ final class PluginRecord {
     boolean preciseFaults = false;
     /** Debugging: GL instrumentation (framebuffer readbacks, per-draw pixel diffs). Very slow. */
     boolean diagnostics = false;
+    /** Runtime permissions requested by the plugin. */
+    final Set<String> requestedPermissions = new TreeSet<>();
+    /** Runtime permissions enabled by the user in ZettaBridge's per-plugin permission panel. */
+    final Set<String> grantedPermissions = new TreeSet<>();
     /** Every ABI directory found under lib/ in the APK. */
     final Set<String> abis = new TreeSet<>();
 
@@ -108,6 +112,8 @@ final class PluginRecord {
         p.setProperty("hideAds", Boolean.toString(hideAds));
         p.setProperty("preciseFaults", Boolean.toString(preciseFaults));
         p.setProperty("diagnostics", Boolean.toString(diagnostics));
+        p.setProperty("requestedPermissions", String.join(",", requestedPermissions));
+        p.setProperty("grantedPermissions", String.join(",", grantedPermissions));
         try (OutputStream out = new FileOutputStream(new File(dir, "meta.properties"))) {
             p.store(out, "ZettaBridge plugin");
         }
@@ -140,9 +146,18 @@ final class PluginRecord {
         r.hideAds = !"false".equals(p.getProperty("hideAds"));
         r.preciseFaults = "true".equals(p.getProperty("preciseFaults"));
         r.diagnostics = "true".equals(p.getProperty("diagnostics"));
+        loadPermissionNames(r.requestedPermissions, p.getProperty("requestedPermissions"));
+        loadPermissionNames(r.grantedPermissions, p.getProperty("grantedPermissions"));
         // Phase 0 arm64 imports are already complete. Old 32-bit records must be reimported so
         // every library passes through the non-atomic ELF fixer before metadata says ready.
         if (r.selectedAbi == null && r.abis.contains(ABI_ARM64)) r.selectedAbi = ABI_ARM64;
         return r;
+    }
+
+    private static void loadPermissionNames(Set<String> out, String value) {
+        if (value == null) return;
+        for (String name : value.split(",")) {
+            if (!name.isEmpty()) out.add(name);
+        }
     }
 }
