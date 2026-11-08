@@ -17,3 +17,7 @@ javac -encoding UTF-8 -source 17 -target 17 -cp "$ANDROID_JAR" -d "$OUT" \
     "$ROOT/android/launcher/app/src/main/java/com/zettabridge/launcher/PluginRecord.java" \
     "$ROOT/tests/launcher/LauncherContractsTest.java"
 java -ea -cp "$OUT:$ANDROID_JAR" com.zettabridge.launcher.LauncherContractsTest
+
+MANIFEST="$ROOT/android/launcher/app/src/main/AndroidManifest.xml"
+grep -q '<action android:name="android.media.action.IMAGE_CAPTURE" />' "$MANIFEST" ||
+    { echo "launcher manifest is missing IMAGE_CAPTURE package visibility" >&2; exit 1; }

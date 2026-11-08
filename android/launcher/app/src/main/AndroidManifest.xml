@@ -38,12 +38,38 @@
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
     <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" />
 
+    <!-- Camera capture is normally resolved through an implicit intent. Android 11+ does not
+         expose those activities without this declaration, so the plugin can crash or fall back
+         to the launcher instead of opening the camera app. -->
+    <queries>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+        <intent>
+            <action android:name="android.media.action.VIDEO_CAPTURE" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.PICK" />
+            <data android:mimeType="image/*" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.GET_CONTENT" />
+            <category android:name="android.intent.category.OPENABLE" />
+            <data android:mimeType="image/*" />
+        </intent>
+    </queries>
+
     <application
         android:name=".ZbApplication"
         android:allowBackup="false"
         android:label="ZettaBridge"
         android:icon="@android:drawable/sym_def_app_icon"
         android:theme="@android:style/Theme.Material.Light.DarkActionBar">
+        <provider
+            android:name=".CameraFileProvider"
+            android:authorities="${applicationId}.zb.camera"
+            android:exported="true"
+            android:grantUriPermissions="true" />
 
         <activity
             android:name=".LibraryActivity"

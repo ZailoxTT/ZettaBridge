@@ -42,6 +42,20 @@ final class LoadedPlugin {
     PackageInfo info;
     /** Content providers started in-process (kept alive for the process lifetime). */
     final List<ContentProvider> providers = new ArrayList<>();
+    ContentProvider providerForAuthority(String authority) {
+        for (ProviderInfo info : providerInfos.values()) {
+            if (info.authority != null) {
+                for (String candidate : info.authority.split(";")) {
+                    if (authority.equals(candidate)) {
+                        for (ContentProvider provider : providers) {
+                            if (provider.getClass().getName().equals(info.name)) return provider;
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
     Application application;
 
     private LoadedPlugin(PluginRecord record, ApplicationInfo appInfo, Resources resources, ClassLoader classLoader) {

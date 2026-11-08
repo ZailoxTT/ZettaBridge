@@ -105,6 +105,12 @@ final class PackageManagerHook implements InvocationHandler {
                 if (result != null) return result;
                 return pluginActivityResolve(args[0]);
             }
+            case "resolveContentProvider":
+                if (args != null && args.length >= 1 && args[0] instanceof String) {
+                    ProviderInfo provider = runtime.findProvider((String) args[0]);
+                    if (provider != null) return new ProviderInfo(provider);
+                }
+                return result;
             case "getApplicationInfo":
                 if (hostPackage.equals(args[0]) && result instanceof ApplicationInfo) {
                     return withPluginMetaData((ApplicationInfo) result);
@@ -139,6 +145,12 @@ final class PackageManagerHook implements InvocationHandler {
             case "getReceiverInfo":
             case "getProviderInfo":
                 return pluginComponent(name, args[0]);
+            case "resolveContentProvider":
+                if (args != null && args.length >= 1 && args[0] instanceof String) {
+                    ProviderInfo provider = runtime.findProvider((String) args[0]);
+                    if (provider != null) return provider;
+                }
+                return null;
             default:
                 return null;
         }
