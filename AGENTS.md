@@ -1860,3 +1860,14 @@ Report lines that localize this area: `jni-input-attach` (ident, looper, owner a
 reproducible one: whichever control is pressed first keeps working, and the other one ends the
 process - the shape of something initialized once, for one path only. The abort message in the
 native dump is the next piece of evidence; the report does not carry it.
+
+## 2026-11-16: issue 21 asset length
+
+Fetched origin/main: it has two README-only web commits beyond d6066b9; this branch has seven
+additional local runtime commits and has not merged those README changes. Preserve the dirty
+Dynarmic submodule and untracked device logs. GitHub issue 21 reports Angry Birds Classic aborting
+after six unimplemented AAsset_getLength64 calls. HostAssets now implements that call with the
+arm32 r0/r1 64-bit result, and AndroidAssetBackend obtains the full 64-bit length. The host test
+checks a valid result and a closed handle. Host suite 54/54 and Android native link pass. This
+addresses the reported missing call, but the game has not yet been tested with the fix; do not
+claim the abort is resolved without a device run. Rebuild the release APK and test issue 21.

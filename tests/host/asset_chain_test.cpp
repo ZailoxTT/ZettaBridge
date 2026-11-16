@@ -67,6 +67,11 @@ int main() {
     CHECK(assets.handle_host_call(zb::ZB_ASSET_HC_AAsset_getLength, thread));
     CHECK(thread.regs()[0] == std::strlen("hello asset bridge"));
 
+    thread.regs()[0] = asset;
+    thread.regs()[1] = 0xffffffffu;
+    CHECK(assets.handle_host_call(151u, thread));
+    CHECK(thread.regs()[0] == 18 && thread.regs()[1] == 0);
+
     const std::uint32_t buffer_addr = 0x11100;
     thread.regs()[0] = asset;
     thread.regs()[1] = buffer_addr;
@@ -111,6 +116,10 @@ int main() {
     // AAsset_close, then every further operation on the closed handle is rejected.
     thread.regs()[0] = asset;
     CHECK(assets.handle_host_call(zb::ZB_ASSET_HC_AAsset_close, thread));
+
+    thread.regs()[0] = asset;
+    CHECK(assets.handle_host_call(151u, thread));
+    CHECK(thread.regs()[0] == 0xffffffffu && thread.regs()[1] == 0xffffffffu);
 
     thread.regs()[0] = asset;
     CHECK(assets.handle_host_call(zb::ZB_ASSET_HC_AAsset_getLength, thread));

@@ -33,7 +33,7 @@ std::uint64_t AndroidAssetBackend::open(std::uint64_t manager, const std::string
 
 std::int64_t AndroidAssetBackend::length(std::uint64_t asset) {
     if (asset == 0) return -1;
-    return static_cast<std::int64_t>(AAsset_getLength(A(asset)));
+    return static_cast<std::int64_t>(AAsset_getLength64(A(asset)));
 }
 
 const void* AndroidAssetBackend::buffer(std::uint64_t asset) {

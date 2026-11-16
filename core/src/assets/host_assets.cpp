@@ -114,6 +114,13 @@ bool HostAssets::handle_host_call(std::uint32_t index, GuestThread& thread) {
         regs[0] = 0;
         return true;
     }
+    case ZB_ASSET_HC_AAsset_getLength64: {
+        const std::uint64_t asset = require_asset(regs[0]);
+        const std::uint64_t length = static_cast<std::uint64_t>(asset != 0 ? backend_.length(asset) : -1);
+        regs[0] = static_cast<std::uint32_t>(length);
+        regs[1] = static_cast<std::uint32_t>(length >> 32);
+        return true;
+    }
     case ZB_ASSET_HC_AAsset_getLength: {
         const std::uint64_t asset = require_asset(regs[0]);
         std::int64_t length = asset != 0 ? backend_.length(asset) : -1;
