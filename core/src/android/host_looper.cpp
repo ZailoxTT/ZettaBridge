@@ -687,7 +687,15 @@ struct HostLooper::Impl {
             int ready_events = 0;
             void* ready_data = nullptr;
             int result = backend->poll_once(timeout, &ready_fd, &ready_events, &ready_data);
-            if (result >= 0) report_platform_ident.fetch_add(1, std::memory_order_relaxed);
+            if (result >= 0 &&
+                report_platform_ident.fetch_add(1, std::memory_order_relaxed) == 0) {
+                char detail[160];
+                std::snprintf(detail, sizeof detail,
+                              "tid=%d ident=%d fd=%d events=0x%x data=%p out-data=0x%08x",
+                              static_cast<int>(thread.tid), result, ready_fd,
+                              static_cast<unsigned>(ready_events), ready_data, out_data);
+                runtime_report().note_looper_detail("first-platform-ident", detail, false);
+            }
             if (result < 0 && input_probe) {
                 // A wake-up with an input queue holding events is that queue reporting itself.
                 std::uint64_t real = 0;

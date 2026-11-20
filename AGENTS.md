@@ -1911,3 +1911,16 @@ The combined test APK is android/launcher/app/build/outputs/apk/release/app-rele
 SHA-256: a0dfcac2a2b5854d9aa66d262cbb5a5ce01cef86b68ac788755b2bc33b5e8cee.
 Await device runs for Jelly Jump startup and Thomas input. GitHub v0.1.0 still points at
 the September stable APK.
+
+### Jelly Jump accepted and prerelease published
+
+The user confirmed Jelly Jump 1.4 works on device. Issue 24 is closed. The confirmed
+APK from e6279b2 is published as v0.1.1-test.1. GitHub's reported asset digest matches
+the local APK digest above. v0.1.0 remains the stable release.
+
+Thomas still hangs after 758 swaps. Of 100,736 ident results, 100,442 came from the
+platform looper and 294 came from the readiness probe. No successful or empty dequeue
+was reported. The next diagnostic build records the first platform ident's fd, event
+bits and data word, and the matching registration data in jni-input-attach. Compare
+those lines in the next device run. Host 54/54, Android link and APK signature pass.
+Diagnostic APK SHA-256: 94b95c0a322bbc6c65d969cd558132b35c90eea5e9f5bca4b3eab77a6a444135.

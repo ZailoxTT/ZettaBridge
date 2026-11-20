@@ -348,6 +348,7 @@ void run_real_looper() {
     CHECK(guest_u32(runtime.memory(), kGuestPage + 0x44) == 1);
     CHECK(guest_u32(runtime.memory(), kGuestPage + 0x48) == 0xBEEF);
     CHECK(zb::runtime_report().text().find("platform-ident=1 queue-probe-ident=0") != std::string::npos);
+    CHECK(zb::runtime_report().text().find("ident=3 fd=11 events=0x1 data=0xbeef") != std::string::npos);
     backend.poll_result = -3;
 
     // wake and removeFd reach the real looper too.
