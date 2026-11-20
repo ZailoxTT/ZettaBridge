@@ -2088,3 +2088,26 @@ signal waiting for JNI reentry. The new test establishes that this can
 happen. Device evidence is still needed to connect it to this freeze.
 
 Launcher SHA-256: bffbebd93611a08b074960fec1d6fc11941932245d3e6e8e8ae1c2e19e0b0e57.
+
+### Make guest exclusive writes atomic against ordinary stores
+
+The next device report had no queued signals at the sampled points. It still
+showed nativeRender, fmodProcess, and nativeProxyFinalize in flight. A closer
+disassembly of libmono.so shows that the loop at 0x2e09e8 backs off while
+waiting for the Boehm GC test-and-set lock. It retries an LDREX/STREX
+exchange, while the unlock path uses an ordinary STR after a barrier.
+
+The ARM exclusive-write callbacks compared and wrote in two distinct
+operations. Dynarmic's monitor serializes those callbacks with each other,
+but ordinary fastmem stores bypass it. If unlock stores zero between the
+comparison and store, the contender can replace zero with one while
+believing the lock was still held. Use relaxed host CAS for aligned
+8/16/32/64-bit writes. Guest barriers retain their ordering role.
+
+Added an ARM guest stress test with six pthreads and the same exchange and
+ordinary unlock. The baseline timed out on the third run of the committed
+test. The fix passed 30/30 runs (5,400,000 acquisitions), the full host suite
+54/54, the full guest suite, and the signed Android release build. The TWA
+gameplay and surface-resume behavior still need a device check.
+
+Launcher SHA-256: c122aa768f5670576baf2eafbc0cbd230d9dd75aa89d0682aa8db89d348ba2d8.

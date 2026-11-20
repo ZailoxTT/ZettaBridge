@@ -42,6 +42,7 @@ run_case kuser_dynamic 0
 run_case signals_dynamic 134
 run_case sigwake_dynamic 0
 run_case cp15_barrier_dynamic 0
+run_case exclusive_lock_dynamic 0
 run_case sigrestart_dynamic 0
 run_case sigio_race_dynamic 0 "$GUEST/zb_sigio_race.tmp"
 run_case mremap_dynamic 0

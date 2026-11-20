@@ -43,6 +43,16 @@ void store(std::uint8_t* p, T v) {
     std::memcpy(p, &v, sizeof v);
 }
 
+template <typename T>
+bool compare_exchange_guest(std::uint8_t* p, T value, T expected) {
+    // ARM exclusive accesses require natural alignment. The JIT emits any guest
+    // acquire or release barrier separately from this relaxed access.
+    static_assert(__atomic_always_lock_free(sizeof(T), nullptr));
+    if (reinterpret_cast<std::uintptr_t>(p) % sizeof(T) != 0) return false;
+    return __atomic_compare_exchange_n(reinterpret_cast<T*>(p), &expected, value, false,
+                                       __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+}
+
 }  // namespace
 
 GuestThread::GuestThread(GuestMemory& mem, Dynarmic::ExclusiveMonitor* monitor, std::size_t processor_id,
@@ -288,29 +298,26 @@ void GuestThread::MemoryWrite64(std::uint32_t vaddr, std::uint64_t value) {
     if (check_access(vaddr, 8, kPageWrite, true)) store(mem_.base() + vaddr, value);
 }
 
-// The ExclusiveMonitor serializes these calls; compare-then-write is atomic under its lock.
+// The ExclusiveMonitor serializes exclusive callbacks. Ordinary JIT stores and
+// host writes can bypass that lock, so the comparison and write must be atomic.
 bool GuestThread::MemoryWriteExclusive8(std::uint32_t vaddr, std::uint8_t value, std::uint8_t expected) {
-    if (!check_access(vaddr, 1, kPageRead | kPageWrite, true) || mem_.base()[vaddr] != expected) return false;
-    mem_.base()[vaddr] = value;
-    return true;
+    return check_access(vaddr, 1, kPageRead | kPageWrite, true) &&
+           compare_exchange_guest(mem_.base() + vaddr, value, expected);
 }
 
 bool GuestThread::MemoryWriteExclusive16(std::uint32_t vaddr, std::uint16_t value, std::uint16_t expected) {
-    if (!check_access(vaddr, 2, kPageRead | kPageWrite, true) || load<std::uint16_t>(mem_.base() + vaddr) != expected) return false;
-    store(mem_.base() + vaddr, value);
-    return true;
+    return check_access(vaddr, 2, kPageRead | kPageWrite, true) &&
+           compare_exchange_guest(mem_.base() + vaddr, value, expected);
 }
 
 bool GuestThread::MemoryWriteExclusive32(std::uint32_t vaddr, std::uint32_t value, std::uint32_t expected) {
-    if (!check_access(vaddr, 4, kPageRead | kPageWrite, true) || load<std::uint32_t>(mem_.base() + vaddr) != expected) return false;
-    store(mem_.base() + vaddr, value);
-    return true;
+    return check_access(vaddr, 4, kPageRead | kPageWrite, true) &&
+           compare_exchange_guest(mem_.base() + vaddr, value, expected);
 }
 
 bool GuestThread::MemoryWriteExclusive64(std::uint32_t vaddr, std::uint64_t value, std::uint64_t expected) {
-    if (!check_access(vaddr, 8, kPageRead | kPageWrite, true) || load<std::uint64_t>(mem_.base() + vaddr) != expected) return false;
-    store(mem_.base() + vaddr, value);
-    return true;
+    return check_access(vaddr, 8, kPageRead | kPageWrite, true) &&
+           compare_exchange_guest(mem_.base() + vaddr, value, expected);
 }
 
 std::optional<std::uint32_t> GuestThread::MemoryReadCode(std::uint32_t vaddr) {
