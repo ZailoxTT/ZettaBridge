@@ -3,6 +3,7 @@ package com.zettabridge.launcher;
 import android.app.Activity;
 import android.os.Bundle;
 import android.widget.Toast;
+import java.util.List;
 
 /**
  * Manifest-declared placeholder activities in :guest, one per launch mode plus fixed
@@ -31,6 +32,12 @@ public final class Stubs {
     public static class SingleTop extends Base {}
 
     public static class SingleTask extends Base {}
+    public static class SingleTask2 extends Base {}
+    public static class SingleTask3 extends Base {}
+    public static class SingleTask4 extends Base {}
+
+    static final List<Class<? extends Activity>> SINGLE_TASK =
+            List.of(SingleTask.class, SingleTask2.class, SingleTask3.class, SingleTask4.class);
 
     public static class SingleInstance extends Base {}
 }

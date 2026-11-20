@@ -1886,3 +1886,15 @@ artifacts. SHA-256: 9ec542b392e42ac2ae4e80c4b882b33a7de07938f0cc3a8f0f01f320f4b0
 Repeat the same inputs in Thomas. If it still hangs, compare jni-input-queue and looper-polls.
 Issue 24's missing ANativeActivity_onCreate export is present in the APK. Jelly Jump gameplay
 was not tested. Issue 21's full game startup still needs a device run.
+
+### Jelly Jump 1.4 startup
+
+The user tested the signed build above. Jelly Jump shows a black screen with no proxy loads.
+Issue 24 was reopened to track startup. The supplied APK declares UnityPlayerProxyActivity and
+UnityPlayerNativeActivity as singleTask. The proxy's onCreate explicitly starts the native
+activity. Both intents previously used the same host component, so Android could reuse the
+proxy activity for the second launch. Give distinct singleTask guest components separate
+manifest slots. The four slots retain their assignments for the lifetime of the guest process.
+Further components fall back to standard launch mode and emit a warning.
+Launcher contracts and the release build pass. The packaged manifest declares all four slots.
+The next device run should reach the native activity and record the first proxy load.

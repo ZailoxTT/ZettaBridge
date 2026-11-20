@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.Application;
 import android.app.Instrumentation;
+import android.content.ComponentName;
 import android.content.ContextWrapper;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
@@ -29,6 +30,7 @@ final class GuestRuntime {
 
     private final Map<String, LoadedPlugin> plugins = new HashMap<>();
     private final Map<String, Integer> liveActivities = new HashMap<>();
+    private final Map<ComponentName, Class<? extends Activity>> singleTaskStubs = new HashMap<>();
     private Application host;
     private boolean installed;
     private volatile LoadedPlugin current;
@@ -147,7 +149,7 @@ final class GuestRuntime {
     }
 
     private Intent stubIntent(LoadedPlugin p, ActivityInfo ai, Intent original) {
-        Intent stub = new Intent(host, stubFor(ai));
+        Intent stub = new Intent(host, stubFor(p, ai));
         stub.setFlags(original.getFlags());
         stub.putExtra(EXTRA_PLUGIN, p.packageName);
         stub.putExtra(EXTRA_ACTIVITY, ai.name);
@@ -155,12 +157,22 @@ final class GuestRuntime {
         return stub;
     }
 
-    private static Class<? extends Activity> stubFor(ActivityInfo ai) {
+    private Class<? extends Activity> stubFor(LoadedPlugin p, ActivityInfo ai) {
         switch (ai.launchMode) {
             case ActivityInfo.LAUNCH_SINGLE_TOP:
                 return Stubs.SingleTop.class;
             case ActivityInfo.LAUNCH_SINGLE_TASK:
-                return Stubs.SingleTask.class;
+                // Android reuses singleTask activities by their manifest component.
+                // Two guest classes sharing one component would receive each other's intents.
+                ComponentName guest = new ComponentName(p.packageName, ai.name);
+                return singleTaskStubs.computeIfAbsent(guest, component -> {
+                    int index = singleTaskStubs.size();
+                    if (index >= Stubs.SINGLE_TASK.size()) {
+                        Log.w(TAG, "No singleTask slot for " + component + "; launching as standard");
+                        return Stubs.Standard.class;
+                    }
+                    return Stubs.SINGLE_TASK.get(index);
+                });
             case ActivityInfo.LAUNCH_SINGLE_INSTANCE:
                 return Stubs.SingleInstance.class;
             default:

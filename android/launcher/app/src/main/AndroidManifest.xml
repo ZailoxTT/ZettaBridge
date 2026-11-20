@@ -90,6 +90,33 @@
             android:taskAffinity="com.zettabridge.launcher.guest"
             android:theme="@android:style/Theme.Material.NoActionBar" />
         <activity
+            android:name=".Stubs$SingleTask2"
+            android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|density|screenSize|smallestScreenSize|layoutDirection|colorMode"
+            android:exported="false"
+            android:hardwareAccelerated="true"
+            android:launchMode="singleTask"
+            android:process=":guest"
+            android:taskAffinity="com.zettabridge.launcher.guest"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
+        <activity
+            android:name=".Stubs$SingleTask3"
+            android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|density|screenSize|smallestScreenSize|layoutDirection|colorMode"
+            android:exported="false"
+            android:hardwareAccelerated="true"
+            android:launchMode="singleTask"
+            android:process=":guest"
+            android:taskAffinity="com.zettabridge.launcher.guest"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
+        <activity
+            android:name=".Stubs$SingleTask4"
+            android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|density|screenSize|smallestScreenSize|layoutDirection|colorMode"
+            android:exported="false"
+            android:hardwareAccelerated="true"
+            android:launchMode="singleTask"
+            android:process=":guest"
+            android:taskAffinity="com.zettabridge.launcher.guest"
+            android:theme="@android:style/Theme.Material.NoActionBar" />
+        <activity
             android:name=".Stubs$SingleInstance"
             android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|density|screenSize|smallestScreenSize|layoutDirection|colorMode"
             android:exported="false"
