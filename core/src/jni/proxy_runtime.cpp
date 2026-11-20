@@ -429,6 +429,10 @@ GuestJniEngine::GuestJniEngine(JniBackend& backend, GlBackend* gl_backend, HostG
                                     },
                                     [looper](std::uint32_t handle) { return looper->owner_of(handle); });
         HostInput* input = host_input_;
+        host_looper_->set_platform_input_filter([input](std::uint64_t real, std::int32_t ident,
+                                                       std::uint32_t data) {
+            return input->accept_platform_ready(real, ident, data);
+        });
         host_looper_->set_input_probe([input](std::uint64_t real) -> std::optional<HostLooper::InputReady> {
             const std::optional<HostInput::Ready> ready = input->ready_on(real);
             if (!ready) return std::nullopt;

@@ -117,6 +117,23 @@ std::optional<HostInput::Ready> HostInput::ready_on(std::uint64_t real_looper) {
     return std::nullopt;
 }
 
+bool HostInput::accept_platform_ready(std::uint64_t real_looper, std::int32_t ident,
+                                      std::uint32_t data) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    Attachment* match = nullptr;
+    for (auto& entry : attachments_) {
+        const auto found = entry.second.find(real_looper);
+        if (found == entry.second.end() || found->second.ident != ident || found->second.data != data) continue;
+        // Without a unique match, let the guest handle the platform result as usual.
+        if (match != nullptr) return true;
+        match = &found->second;
+    }
+    if (match == nullptr) return true;
+    if (match->announced) return false;
+    match->announced = true;
+    return true;
+}
+
 bool HostInput::reject(const char* function, std::uint32_t handle) {
     {
         std::lock_guard<std::mutex> lock(mutex_);

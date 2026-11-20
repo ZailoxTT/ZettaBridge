@@ -1942,3 +1942,14 @@ APK SHA-256: 8da8a2b7189d31acb63ff600974078fe2daf76095f0cd0b4836bbfb55c9fe589.
 
 Public README files and stable release notes describe compatibility by capability.
 Keep individual game results in issues, device test notes, or prerelease notes when needed.
+
+### Gameplay input readiness
+
+The multi-looper registration build got through the intro but froze in gameplay after
+about 15 seconds. The report counted 324,480 platform ident results and 347 queue
+probe results with no native dequeue recorded. The existing readiness latch was only
+used by the probe. Apply the same latch when a platform ident uniquely matches an input
+registration on the polling looper. The guest gets a wake for duplicate readiness
+until it dequeues an event. Nonmatching or ambiguous results keep their original behavior.
+The host test covers direct and probe deduplication and dequeue rearming. Host 54/54.
+A device retest still needs to establish whether the freeze is fixed.

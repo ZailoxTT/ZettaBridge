@@ -134,6 +134,13 @@ int main() {
     CHECK(ready.has_value() && ready->ident == 42 && ready->data == 0xCAFE);
     const auto other_ready = input.ready_on(0x5200);
     CHECK(other_ready.has_value() && other_ready->ident == 43 && other_ready->data == 0xCAFE);
+    CHECK(!input.accept_platform_ready(0x5100, 42, 0xCAFE));
+    CHECK(input.accept_platform_ready(0x5100, 99, 0xCAFE));
+    CHECK(call_input(input, thread, zb::ZB_INPUT_HC_AInputQueue_getEvent, {queue, kData}) == 0);
+    std::memcpy(&handle, runtime.memory().base() + kData, sizeof handle);
+    CHECK(call_input(input, thread, zb::ZB_INPUT_HC_AInputQueue_finishEvent, {queue, handle, 1}) == 0);
+    CHECK(input.accept_platform_ready(0x5100, 42, 0xCAFE));
+    CHECK(!input.accept_platform_ready(0x5100, 42, 0xCAFE));
     CHECK(!input.ready_on(0x9999).has_value());
 
     CHECK(call_input(input, thread, zb::ZB_INPUT_HC_AInputQueue_detachLooper, {queue}) == 0);

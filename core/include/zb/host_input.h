@@ -60,6 +60,7 @@ public:
     // queue and the looper is simply woken, so a guest that waits for its ident would wait
     // forever. The poll asks this after every wake-up.
     std::optional<Ready> ready_on(std::uint64_t real_looper);
+    bool accept_platform_ready(std::uint64_t real_looper, std::int32_t ident, std::uint32_t data);
 
 private:
     const void* live_event(std::uint32_t handle) const;

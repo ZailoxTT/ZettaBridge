@@ -43,6 +43,8 @@ public:
     };
     using InputProbe = std::function<std::optional<InputReady>(std::uint64_t real_looper)>;
     void set_input_probe(InputProbe probe);
+    using PlatformInputFilter = std::function<bool(std::uint64_t, std::int32_t, std::uint32_t)>;
+    void set_platform_input_filter(PlatformInputFilter filter);
 
     // The guest tid that owns a guest looper handle, or 0. The attach records it: a queue
     // attached to a looper nobody polls never delivers, and which thread owns what is the first
