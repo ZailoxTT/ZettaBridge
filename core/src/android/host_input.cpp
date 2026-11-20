@@ -160,7 +160,11 @@ bool HostInput::handle_host_call(std::uint32_t index, GuestThread& thread) {
         }
         std::memcpy(out, &handle, sizeof handle);
         regs[0] = static_cast<std::uint32_t>(status);
-        if (event != nullptr) report_queue_state();
+        if (event != nullptr) {
+            report_queue_state();
+        } else {
+            runtime_report().note_jni_detail("input-get-empty", std::to_string(status), false);
+        }
         return true;
     }
     case ZB_INPUT_HC_AInputQueue_preDispatchEvent: {

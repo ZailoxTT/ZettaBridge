@@ -1898,3 +1898,16 @@ manifest slots. The four slots retain their assignments for the lifetime of the 
 Further components fall back to standard launch mode and emit a warning.
 Launcher contracts and the release build pass. The packaged manifest declares all four slots.
 The next device run should reach the native activity and record the first proxy load.
+
+### Thomas input diagnostics
+
+The stack-argument fix did not resolve the hang on device. The new run reported 1,023
+swaps, 197 ident results, no input dequeue line and no guest exit. The looper report now
+splits platform-ident from queue-probe-ident. jni-input-get-empty records the first failed
+dequeue status when the guest calls getEvent but receives no event.
+
+Host tests 54/54, launcher contracts, Android link and signed APK verification pass.
+The combined test APK is android/launcher/app/build/outputs/apk/release/app-release.apk.
+SHA-256: a0dfcac2a2b5854d9aa66d262cbb5a5ce01cef86b68ac788755b2bc33b5e8cee.
+Await device runs for Jelly Jump startup and Thomas input. GitHub v0.1.0 still points at
+the September stable APK.
