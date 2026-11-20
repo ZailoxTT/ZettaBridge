@@ -2017,3 +2017,15 @@ the local test copy above.
 
 Host suite 54/54 and signed launcher build pass. Launcher SHA-256:
 e0771abc64ce60272d66cc60cf71318e56d2fecf0cba1b6fc6198d86e2a59bcb.
+
+### Import local OBB expansion files
+
+The patched Portal build passed PendingIntent. Its downloader did not connect to
+its service, and Pause dereferenced a null service. The launcher now imports a
+selected main, patch or extras OBB into the selected plugin's getObbDir, preserving
+the filename and publishing the copy atomically. Launcher contracts cover copying
+and rejecting foreign or unsafe filenames. The Portal test copy in Download
+(Portal-79-obb-test.apk) now reads the same directory and uses the guest package
+in standard expansion filenames. Portal's existing detection requires both main
+and patch files. Neither game data nor the modified APK is tracked or published.
+On device, import the test APK, then import each original expansion file once.

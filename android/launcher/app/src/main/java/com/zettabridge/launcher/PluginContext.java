@@ -304,7 +304,9 @@ final class PluginContext extends ContextWrapper {
 
     @Override
     public File getObbDir() {
-        return external(super.getObbDir(), plugin.packageName);
+        File dir = PluginStore.obbDir(getBaseContext(), plugin.packageName);
+        if (dir != null) dir.mkdirs();
+        return dir;
     }
 
     @Override

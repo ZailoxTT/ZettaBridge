@@ -132,6 +132,27 @@ final class PluginStore {
         PluginFiles.deleteRecursive(r.dir);
     }
 
+    static File obbDir(Context host, String packageName) {
+        File root = host.getObbDir();
+        return root != null ? new File(root, packageName) : null;
+    }
+
+    static String importObb(Context host, PluginRecord record, Uri uri) throws IOException {
+        String name = null;
+        String column = android.provider.OpenableColumns.DISPLAY_NAME;
+        try (android.database.Cursor cursor = host.getContentResolver().query(
+                uri, new String[] {column}, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) name = cursor.getString(0);
+        }
+        File target = obbDir(host, record.packageName);
+        if (target == null) throw new IOException("OBB storage is unavailable");
+        try (InputStream in = host.getContentResolver().openInputStream(uri)) {
+            if (in == null) throw new IOException("cannot open expansion file");
+            PluginFiles.importObb(in, target, record.packageName, name);
+        }
+        return name;
+    }
+
     private static void saveIcon(Drawable d, File out) {
         if (d == null) return;
         int size = 192;

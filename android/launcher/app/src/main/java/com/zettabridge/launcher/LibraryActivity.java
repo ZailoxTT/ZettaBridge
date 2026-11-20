@@ -36,6 +36,8 @@ import java.util.List;
 public class LibraryActivity extends Activity {
     private static final String TAG = "zb-launcher";
     private static final int REQUEST_IMPORT = 1;
+    private static final int REQUEST_IMPORT_OBB = 2;
+    private String obbPackage;
 
     private final List<PluginRecord> plugins = new ArrayList<>();
     private BaseAdapter adapter;
@@ -44,6 +46,7 @@ public class LibraryActivity extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
+        if (state != null) obbPackage = state.getString("obbPackage");
         int pad = dp(16);
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -178,6 +181,44 @@ public class LibraryActivity extends Activity {
         if (requestCode == REQUEST_IMPORT && resultCode == RESULT_OK && data != null && data.getData() != null) {
             importApk(data.getData());
         }
+        if (requestCode == REQUEST_IMPORT_OBB) {
+            PluginRecord record = obbPackage == null ? null : PluginStore.find(this, obbPackage);
+            obbPackage = null;
+            if (record != null && resultCode == RESULT_OK && data != null && data.getData() != null) {
+                importObb(record, data.getData());
+            }
+        }
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle state) {
+        super.onSaveInstanceState(state);
+        state.putString("obbPackage", obbPackage);
+    }
+
+    private void pickObb(PluginRecord record) {
+        obbPackage = record.packageName;
+        startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT)
+                .addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"), REQUEST_IMPORT_OBB);
+    }
+
+    private void importObb(PluginRecord record, Uri uri) {
+        stopGuestProcess();
+        AlertDialog progress = new AlertDialog.Builder(this).setMessage("Importing OBB...")
+                .setCancelable(false).show();
+        new Thread(() -> {
+            String message;
+            try {
+                message = "Imported " + PluginStore.importObb(this, record, uri);
+            } catch (Exception failure) {
+                message = "OBB import failed: " + failure.getMessage();
+            }
+            String shown = message;
+            runOnUiThread(() -> {
+                progress.dismiss();
+                Toast.makeText(this, shown, Toast.LENGTH_LONG).show();
+            });
+        }, "zb-obb-import").start();
     }
 
     private void importApk(Uri uri) {
@@ -217,7 +258,7 @@ public class LibraryActivity extends Activity {
                                         r.hideAds ? "Show ads" : "Hide ads",
                                         r.preciseFaults ? "Precise faults: on" : "Precise faults (slow)",
                                         r.diagnostics ? "GL diagnostics: on" : "GL diagnostics (slow)",
-                                        "Delete"},
+                                        "Delete", "Import OBB"},
                         (dialog, which) -> {
                             if (which == 0) launch(r);
                             if (which == 1) showRuntimeReport(r);
@@ -226,6 +267,7 @@ public class LibraryActivity extends Activity {
                             if (which == 4) togglePreciseFaults(r);
                             if (which == 5) toggleDiagnostics(r);
                             if (which == 6) confirmDelete(r);
+                            if (which == 7) pickObb(r);
                         })
                 .show();
     }

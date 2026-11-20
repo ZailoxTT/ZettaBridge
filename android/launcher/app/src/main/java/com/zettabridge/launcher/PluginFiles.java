@@ -24,6 +24,15 @@ final class PluginFiles {
 
     private PluginFiles() {}
 
+    static void importObb(InputStream in, File obbDir, String packageName, String name) throws IOException {
+        if (name == null || name.indexOf('/') >= 0 || name.indexOf('\\') >= 0
+                || !name.matches("(main|patch|extras)\\.[0-9]+\\."
+                                 + java.util.regex.Pattern.quote(packageName) + "\\.obb")) {
+            throw new IOException("Choose an expansion file for " + packageName);
+        }
+        copyAtomic(in, new File(obbDir, name));
+    }
+
     static String selectAbi(Set<String> abis) {
         if (abis.contains(PluginRecord.ABI_ARM64)) return PluginRecord.ABI_ARM64;
         if (abis.contains(PluginRecord.ABI_ARM32_V7A)) return PluginRecord.ABI_ARM32_V7A;

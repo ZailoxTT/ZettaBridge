@@ -125,9 +125,14 @@ public final class LauncherContractsTest {
         check(proxy != null && proxy.getName().equals("liblime.so"), "proxy path");
         check("proxy-v1".equals(read(proxy)), "proxy copied atomically");
         write(template, "proxy-v2");
+        check(template.setLastModified(proxy.lastModified()), "set equal proxy timestamps");
         check(proxy.equals(PluginFiles.resolveLibrary(new File(root, "plugin/lib"), proxyDir, template, true, "lime")),
                 "same proxy path reused");
         check("proxy-v1".equals(read(proxy)), "existing proxy is not replaced during a process");
+        check(template.setLastModified(proxy.lastModified() + 2000), "set newer template timestamp");
+        check(proxy.equals(PluginFiles.resolveLibrary(new File(root, "plugin/lib"), proxyDir, template, true, "lime")),
+                "new template retains proxy path");
+        check("proxy-v2".equals(read(proxy)), "newer template replaces old proxy");
         check(PluginFiles.resolveLibrary(new File(root, "plugin/lib"), proxyDir, template, true, "missing") == null,
                 "missing guest library falls back");
         check(PluginFiles.resolveLibrary(new File(root, "plugin/lib"), proxyDir, template, false, "lime").equals(guest),
@@ -154,6 +159,20 @@ public final class LauncherContractsTest {
             testNamesAndDelegation();
             testExtractionAndMetadata(root);
             testProxy(root);
+            File obb = new File(root, "obb");
+            String name = "main.79.com.example.plugin.obb";
+            byte[] contents = {1, 2, 3};
+            PluginFiles.importObb(new java.io.ByteArrayInputStream(contents), obb, "com.example.plugin", name);
+            check(java.util.Arrays.equals(contents, Files.readAllBytes(new File(obb, name).toPath())),
+                    "expansion file is copied intact");
+            for (String invalid : new String[] {"../" + name, "main.79.com.other.app.obb"}) {
+                try {
+                    PluginFiles.importObb(new java.io.ByteArrayInputStream(contents), obb, "com.example.plugin", invalid);
+                    throw new AssertionError("invalid expansion filename accepted");
+                } catch (java.io.IOException expected) {
+                    check(obb.list().length == 1, "invalid expansion import leaves existing data alone");
+                }
+            }
             testDirectoryPublication(root);
         } finally {
             PluginFiles.deleteRecursive(root);
