@@ -2111,3 +2111,23 @@ test. The fix passed 30/30 runs (5,400,000 acquisitions), the full host suite
 gameplay and surface-resume behavior still need a device check.
 
 Launcher SHA-256: c122aa768f5670576baf2eafbc0cbd230d9dd75aa89d0682aa8db89d348ba2d8.
+
+### Prepare the 0.1.1 stable candidate
+
+The user played Thomas on the f41d10f build and reported no freeze or crash
+during that run. Background and resume on the new build are still unverified.
+Jelly Jump startup was verified earlier and issue 24 is already closed.
+
+The signed 0.1.1 candidate sets Android versionCode 2. Both published APKs
+(0.1.0 and 0.1.1-test.1) report versionCode 1 and the same signing certificate
+as the candidate. Verified the merged APK manifest, signature, and bundled
+native core. Host suite 54/54 and the guest suite pass again. The remote main
+at 24fd3be is an ancestor and can be fast-forwarded. This is a local candidate.
+
+Issue 21's AAsset_getLength64 fix is present on main. The original report
+still needs an on-device retest. Retest the GLESv1 library-load report in
+issue 31 separately from GLES 1.x rendering. Keep the JNI load reports in
+issues 32 and 35 open until the first load failure is captured on the new
+build. Issue 13 has additional OBB-path and Java compatibility work.
+
+Launcher SHA-256: a2527cbadd410fbf0d26bbaa31fb346ec15b75483a67b44877563ef9d85f6c33.
