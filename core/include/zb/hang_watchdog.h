@@ -23,7 +23,8 @@ enum class ThreadActivityKind : std::uint8_t {
 // Records that guest thread `tid` just performed a syscall (`id` = syscall number) or a host
 // call (`id` = host-call index). Lock-free, allocation-free, safe from any thread: called on
 // every syscall and every host call, so it must stay cheap.
-void record_thread_activity(std::int32_t tid, ThreadActivityKind kind, std::uint32_t id);
+void record_thread_activity(std::int32_t tid, ThreadActivityKind kind, std::uint32_t id,
+                            std::uint32_t pc = 0, std::uint32_t lr = 0);
 
 // The host call recorded last for this thread has returned. A thread whose last recorded event is
 // still in progress is blocked inside our own code, which reads very differently from a guest
@@ -36,6 +37,8 @@ struct ThreadActivitySample {
     std::uint32_t id = 0;
     std::uint64_t counter = 0;
     bool in_progress = false;  // still inside the recorded host call or syscall
+    std::uint32_t pc = 0;
+    std::uint32_t lr = 0;
 };
 
 // A snapshot of every guest thread slot touched so far.
@@ -54,8 +57,8 @@ public:
 
     static constexpr std::chrono::seconds kInterval{3};
     static constexpr int kStuckThreshold = 2;      // consecutive unchanged samples
-    static constexpr std::size_t kMaxNotes = 6;    // report lines this watchdog will ever write
-    static constexpr std::size_t kMaxThreadsShown = 8;
+    static constexpr std::size_t kMaxNotes = 6;    // fixed history before updating the latest line
+    static constexpr std::size_t kMaxThreadsShown = 5;
 
     explicit HangWatchdog(SnapshotFn snapshot = snapshot_thread_activity);
 
@@ -73,6 +76,9 @@ private:
         std::uint64_t counter = 0;
         Clock::time_point since{};  // when this (kind, id, counter) was first observed
         int unchanged_samples = 0;
+        bool in_progress = false;
+        std::uint32_t pc = 0;
+        std::uint32_t lr = 0;
     };
 
     SnapshotFn snapshot_;

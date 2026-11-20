@@ -519,7 +519,7 @@ bool Process::dispatch_stop(GuestThread& thread, const Stop& stop) {
         }
         if ((stop.swi & 0xFF0000u) == kHostCallBase) {
             const std::uint32_t index = stop.swi & 0xFFFFu;
-            record_thread_activity(thread.tid, ThreadActivityKind::kHostCall, index);
+            record_thread_activity(thread.tid, ThreadActivityKind::kHostCall, index, stop.pc, thread.regs()[14]);
             // A host call is host C++ called from translated guest code, and an exception that
             // escapes it has no frame above to catch it: the process dies with "terminating" and
             // nothing else. The name of the call and the reason are worth far more than the
@@ -555,6 +555,7 @@ bool Process::dispatch_stop(GuestThread& thread, const Stop& stop) {
             // The guest keeps running with r0 = 0; the report is the only record that survives a
             // device run, because OxygenOS drops our logcat output.
             runtime_report().note_unimplemented_host_call(index, library, name);
+            record_thread_activity_done(thread.tid);
             thread.regs()[0] = 0;
             return true;
         }

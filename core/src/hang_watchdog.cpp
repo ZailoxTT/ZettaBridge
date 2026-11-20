@@ -5,6 +5,7 @@
 
 #include <dirent.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cstdio>
 #include <cstdlib>
@@ -30,23 +31,31 @@ struct Slot {
     std::atomic<std::uint8_t> kind{static_cast<std::uint8_t>(ThreadActivityKind::kNone)};
     std::atomic<std::uint32_t> id{0};
     std::atomic<std::uint64_t> counter{0};
+    std::atomic<std::uint32_t> pc{0};
+    std::atomic<std::uint32_t> lr{0};
 };
 
 Slot g_slots[kMaxSlots];
 
 }  // namespace
 
-void record_thread_activity(std::int32_t tid, ThreadActivityKind kind, std::uint32_t id) {
+void record_thread_activity(std::int32_t tid, ThreadActivityKind kind, std::uint32_t id,
+                            std::uint32_t pc, std::uint32_t lr) {
     if (tid == 0) return;
     // This runs on every guest syscall and host call, so the common path must not scan the table:
     // each thread remembers its own slot after claiming it once.
     static thread_local Slot* mine = nullptr;
     static thread_local std::int32_t mine_tid = 0;
+    const auto record = [&](Slot& slot) {
+        slot.kind.store(static_cast<std::uint8_t>(kind), std::memory_order_relaxed);
+        slot.id.store(id, std::memory_order_relaxed);
+        slot.pc.store(pc, std::memory_order_relaxed);
+        slot.lr.store(lr, std::memory_order_relaxed);
+        slot.in_progress.store(true, std::memory_order_relaxed);
+        slot.counter.fetch_add(1, std::memory_order_release);
+    };
     if (mine != nullptr && mine_tid == tid) {
-        mine->kind.store(static_cast<std::uint8_t>(kind), std::memory_order_relaxed);
-        mine->id.store(id, std::memory_order_relaxed);
-        mine->counter.fetch_add(1, std::memory_order_relaxed);
-        mine->in_progress.store(true, std::memory_order_relaxed);
+        record(*mine);
         return;
     }
     // Find an existing slot for this tid, or claim the first free one. A relaxed CAS race
@@ -56,10 +65,7 @@ void record_thread_activity(std::int32_t tid, ThreadActivityKind kind, std::uint
     for (Slot& slot : g_slots) {
         const std::int32_t current = slot.tid.load(std::memory_order_relaxed);
         if (current == tid) {
-            slot.kind.store(static_cast<std::uint8_t>(kind), std::memory_order_relaxed);
-            slot.id.store(id, std::memory_order_relaxed);
-            slot.counter.fetch_add(1, std::memory_order_relaxed);
-            slot.in_progress.store(true, std::memory_order_relaxed);
+            record(slot);
             mine = &slot;
             mine_tid = tid;
             return;
@@ -72,9 +78,7 @@ void record_thread_activity(std::int32_t tid, ThreadActivityKind kind, std::uint
         // Lost the race; the winner's slot is not this tid's, try once more on the next call.
         return;
     }
-    free_slot->kind.store(static_cast<std::uint8_t>(kind), std::memory_order_relaxed);
-    free_slot->id.store(id, std::memory_order_relaxed);
-    free_slot->counter.store(1, std::memory_order_relaxed);
+    record(*free_slot);
     mine = free_slot;
     mine_tid = tid;
 }
@@ -95,10 +99,12 @@ std::vector<ThreadActivitySample> snapshot_thread_activity() {
         if (tid == 0) continue;
         ThreadActivitySample sample;
         sample.tid = tid;
+        sample.counter = slot.counter.load(std::memory_order_acquire);
         sample.kind = static_cast<ThreadActivityKind>(slot.kind.load(std::memory_order_relaxed));
         sample.id = slot.id.load(std::memory_order_relaxed);
-        sample.counter = slot.counter.load(std::memory_order_relaxed);
         sample.in_progress = slot.in_progress.load(std::memory_order_relaxed);
+        sample.pc = slot.pc.load(std::memory_order_relaxed);
+        sample.lr = slot.lr.load(std::memory_order_relaxed);
         out.push_back(sample);
     }
     return out;
@@ -238,8 +244,11 @@ bool HangWatchdog::sample(Clock::time_point now) {
         state.kind = sample.kind;
         state.id = sample.id;
         state.counter = sample.counter;
+        state.in_progress = sample.in_progress;
+        state.pc = sample.pc;
+        state.lr = sample.lr;
         if (prior != nullptr && prior->kind == sample.kind && prior->id == sample.id &&
-            prior->counter == sample.counter) {
+            prior->counter == sample.counter && prior->in_progress == sample.in_progress) {
             state.since = prior->since;
             state.unchanged_samples = prior->unchanged_samples + 1;
         } else {
@@ -250,13 +259,15 @@ bool HangWatchdog::sample(Clock::time_point now) {
     }
     previous_ = std::move(next);
 
-    if (notes_written_ >= kMaxNotes) return false;
-
     std::vector<const State*> stuck;
     for (const State& state : previous_) {
         if (state.unchanged_samples >= kStuckThreshold) stuck.push_back(&state);
     }
     if (stuck.empty()) return false;
+    std::stable_sort(stuck.begin(), stuck.end(), [](const State* a, const State* b) {
+        if (a->in_progress != b->in_progress) return a->in_progress;
+        return a->since > b->since;
+    });
 
     std::string value;
     std::size_t shown = 0;
@@ -268,11 +279,17 @@ bool HangWatchdog::sample(Clock::time_point now) {
         sample.kind = state->kind;
         sample.id = state->id;
         sample.counter = state->counter;
+        sample.in_progress = state->in_progress;
         const auto seconds =
             std::chrono::duration_cast<std::chrono::seconds>(now - state->since).count();
         value += std::to_string(state->tid) + "=" + describe_thread_activity(sample) +
                  " x" + std::to_string(state->counter) + " stuck=" + std::to_string(seconds) +
                  " " + thread_kernel_state(state->tid);
+        if (state->pc != 0) {
+            char location[40];
+            std::snprintf(location, sizeof location, " pc=0x%08x lr=0x%08x", state->pc, state->lr);
+            value += location;
+        }
         ++shown;
     }
     value += " | recent-jni: " + jni_recent_calls();
@@ -283,8 +300,8 @@ bool HangWatchdog::sample(Clock::time_point now) {
         write_threads_census();
     }
 
-    ++notes_written_;
-    runtime_report().note_watch_detail(std::to_string(notes_written_), value);
+    const std::string key = notes_written_ < kMaxNotes ? std::to_string(++notes_written_) : "latest";
+    runtime_report().note_watch_detail(key, value);
     return true;
 }
 

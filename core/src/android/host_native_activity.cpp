@@ -120,6 +120,8 @@ void HostNativeActivity::deliver(std::uint32_t guest_activity, GuestCallback slo
     if (function == 0) return;  // the guest does not want this event
     GuestCall call;
     call.regs = {guest_activity, argument, 0, 0};
+    runtime_report().note_jni_detail("native-activity-entered",
+                                     kGuestCallbackNames[static_cast<std::uint32_t>(slot)], true);
     if (!call_(function, call)) {
         log("guest %s failed", kGuestCallbackNames[static_cast<std::uint32_t>(slot)]);
         runtime_report().note_jni_detail("native-activity-failed",

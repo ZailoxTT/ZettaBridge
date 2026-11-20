@@ -1979,3 +1979,22 @@ calls that have entered but not returned. Read it after the freeze to distinguis
 native call from Java ceasing to schedule renders. The JNI bridge integration test checks
 the counter inside and after a real guest call. Host 54/54 and signed release build pass.
 APK SHA-256: 17d395c98409736556712864b3f4b7a19c01d4455c9f53c629008c3758eafca4.
+
+### Test artifacts for the render hang and the PendingIntent exception
+
+Thomas reached gameplay and completed a level. The post-resume report had 2,666 swaps
+and one nativeRender and one fmodProcess in flight. Take the next report while the
+game is frozen in the foreground, then take a separate report after background/resume.
+The watchdog now ranks recently blocked calls above idle threads, includes guest PC/LR,
+and updates watch-latest after its six initial notes. NativeActivity reports callback
+entry and return separately. EGL records the results of window-surface creation,
+surface destruction and MakeCurrent. Host suite 54/54 and signed Android build pass.
+Launcher SHA-256: 2cee6f3796a68b39a1941dbcc2dd40b8ef9f2f88429b6350597d244bad972e63.
+
+The user-supplied Portal APK has a local test copy at
+build/compat-tests/Portal-79-pending-intent-test.apk. The disassembled downloader class
+differs only in the PendingIntent flags (0x08000000 to 0x0c000000). Its manifest,
+resource table and native libraries are byte-identical to the original. The copy uses
+a local test signature. No game APK is staged or published. Import the copy in ZettaBridge
+to test the downloader. SHA-256: ed0a4552081c765b45f533ec9617403ba75d5daa939cf157b7d50b1e40529812.
+There was no connected Android device available for either test.

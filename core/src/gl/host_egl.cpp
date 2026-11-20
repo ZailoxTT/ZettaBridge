@@ -242,6 +242,13 @@ bool HostEgl::handle_host_call(std::uint32_t index, GuestThread& thread) {
         const std::uint64_t slot = g_recent_egl_next.fetch_add(1, std::memory_order_relaxed) % kRecentEglCalls;
         g_recent_egl[slot].index.store(index, std::memory_order_relaxed);
         g_recent_egl[slot].result.store(thread.regs()[0], std::memory_order_relaxed);
+        if (index == ZB_EGL_HC_eglCreateWindowSurface || index == ZB_EGL_HC_eglDestroySurface ||
+            index == ZB_EGL_HC_eglMakeCurrent) {
+            char detail[64];
+            std::snprintf(detail, sizeof detail, "tid=%ld result=0x%08x",
+                          ::syscall(SYS_gettid), thread.regs()[0]);
+            runtime_report().note_egl_object(kEglHostCalls[index - kEglHostCallFirst].name, detail);
+        }
         return true;
     }
     log("EGL host call index %u has no generated handler", index);
