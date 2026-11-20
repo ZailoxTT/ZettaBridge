@@ -1924,3 +1924,18 @@ was reported. The next diagnostic build records the first platform ident's fd, e
 bits and data word, and the matching registration data in jni-input-attach. Compare
 those lines in the next device run. Host 54/54, Android link and APK signature pass.
 Diagnostic APK SHA-256: 94b95c0a322bbc6c65d969cd558132b35c90eea5e9f5bca4b3eab77a6a444135.
+
+### Keep input queue registrations for all loopers
+
+Thomas froze on an intro tap after 18 swaps with audio still playing and 93,122
+platform ident results. Another run reached gameplay and 763 swaps with one platform
+ident. Both first platform results matched the latest attach ident and data, but came
+from a different guest tid. AOSP InputQueue keeps one registration per real looper.
+The bridge used to overwrite its probe registration on every attach, while Android
+retained the old registration. The bridge now keeps each looper's registration and
+clears all of them on queue detach or destruction. A two-looper probe regression
+failed before and passes after the change.
+
+Host suite 54/54, Android link and signed launcher build pass. Repeat intro taps and
+gameplay on device to determine whether the freeze remains.
+APK SHA-256: 8da8a2b7189d31acb63ff600974078fe2daf76095f0cd0b4836bbfb55c9fe589.

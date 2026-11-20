@@ -33,6 +33,7 @@ std::size_t HostInput::remove_queue(std::uint32_t handle) {
     std::vector<std::uint32_t> orphans;
     {
         std::lock_guard<std::mutex> lock(mutex_);
+        attachments_.erase(handle);
         for (const auto& [event, owner] : live_events_) {
             if (owner == handle) orphans.push_back(event);
         }
@@ -90,25 +91,27 @@ void HostInput::report_queue_state() {
 
 std::optional<HostInput::Ready> HostInput::ready_on(std::uint64_t real_looper) {
     if (real_looper == 0) return std::nullopt;
-    std::vector<std::pair<std::uint32_t, Attachment>> candidates;
+    std::vector<std::uint32_t> candidates;
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        for (const auto& [handle, attachment] : attachments_) {
-            if (attachment.real_looper == real_looper) candidates.emplace_back(handle, attachment);
+        for (const auto& [handle, loopers] : attachments_) {
+            const auto entry = loopers.find(real_looper);
+            if (entry != loopers.end() && !entry->second.announced) candidates.push_back(handle);
         }
     }
     // The backend is asked outside the lock: it is the platform, and nothing guest-facing should
     // wait on this unit's own mutex.
-    for (const auto& [handle, attachment] : candidates) {
-        if (attachment.announced) continue;  // already reported; waiting for the guest to take it
+    for (const auto handle : candidates) {
         void* queue = queue_for(handle);
         if (queue == nullptr) continue;
         if (backend_.queue_has_events(queue) <= 0) continue;
-        {
-            std::lock_guard<std::mutex> lock(mutex_);
-            const auto entry = attachments_.find(handle);
-            if (entry != attachments_.end()) entry->second.announced = true;
-        }
+        std::lock_guard<std::mutex> lock(mutex_);
+        const auto queue_entry = attachments_.find(handle);
+        if (queue_entry == attachments_.end()) continue;
+        const auto entry = queue_entry->second.find(real_looper);
+        if (entry == queue_entry->second.end() || entry->second.announced) continue;
+        Attachment& attachment = entry->second;
+        attachment.announced = true;
         return Ready{attachment.ident, attachment.data};
     }
     return std::nullopt;
@@ -156,7 +159,9 @@ bool HostInput::handle_host_call(std::uint32_t index, GuestThread& thread) {
             live_events_[handle] = regs[0];
             ++events_gotten_;
             const auto attachment = attachments_.find(regs[0]);
-            if (attachment != attachments_.end()) attachment->second.announced = false;
+            if (attachment != attachments_.end()) {
+                for (auto& entry : attachment->second) entry.second.announced = false;
+            }
         }
         std::memcpy(out, &handle, sizeof handle);
         regs[0] = static_cast<std::uint32_t>(status);
@@ -245,7 +250,7 @@ bool HostInput::handle_host_call(std::uint32_t index, GuestThread& thread) {
                                      reinterpret_cast<void*>(static_cast<std::uintptr_t>(data)), real_looper);
         {
             std::lock_guard<std::mutex> lock(mutex_);
-            attachments_[regs[0]] = Attachment{real_looper, static_cast<std::int32_t>(regs[2]), data};
+            attachments_[regs[0]].try_emplace(real_looper, Attachment{static_cast<std::int32_t>(regs[2]), data});
         }
         char detail[160];
         std::snprintf(detail, sizeof detail, "ident %u looper 0x%08x owner-tid %d caller-tid %d data 0x%08x%s",
