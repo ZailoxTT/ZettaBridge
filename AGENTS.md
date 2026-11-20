@@ -2136,3 +2136,11 @@ The user verified updating over the previous version and returning after
 backgrounding on the 0.1.1 candidate. Bilingual stable release notes are staged
 locally at build/release-v0.1.1.md. The notes describe launcher capabilities
 and omit individual titles. The remote main and GitHub release are unchanged.
+
+### Released ZettaBridge 0.1.1
+
+The stable release is public at
+https://github.com/ZailoxTT/ZettaBridge/releases/tag/v0.1.1. Main and the release
+tag both pointed to 8094379 at publication. Verified the published bilingual
+notes against the approved draft and downloaded ZettaBridge-0.1.1.apk to
+confirm it matched the checked local APK byte for byte.
