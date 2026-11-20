@@ -504,6 +504,10 @@ std::size_t LibraryRuntime::guest_thread_count() const {
     return impl_->process.thread_count();
 }
 
+std::string LibraryRuntime::pending_signal_summary() const {
+    return impl_->process.pending_signal_summary();
+}
+
 bool LibraryRuntime::is_borrower(const GuestThread& thread) const {
     return impl_->process.is_borrower(thread);
 }
@@ -541,9 +545,16 @@ std::optional<GuestResult> LibraryRuntime::Carrier::call(std::uint32_t function,
         return std::nullopt;
     }
     Process::set_current_thread(borrower);
-    auto result = state_->impl->process.call_guest(*borrower, function, args);
-    Process::set_current_thread(previous);
-    return result;
+    borrower->borrower_in_guest.store(true);
+    struct RestoreBorrower {
+        GuestThread& borrower;
+        GuestThread* previous;
+        ~RestoreBorrower() {
+            if (previous == nullptr) borrower.borrower_in_guest.store(false);
+            Process::set_current_thread(previous);
+        }
+    } restore{*borrower, previous};
+    return state_->impl->process.call_guest(*borrower, function, args);
 }
 
 bool LibraryRuntime::Carrier::ensure_scratch(std::string& error) {

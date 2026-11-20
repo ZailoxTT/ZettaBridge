@@ -55,7 +55,7 @@ public:
     // separately, later ones share one overflow counter. Call once, at registration; cache the
     // returned pointer and increment it with a relaxed atomic add per call, never through this
     // method again.
-    static constexpr std::size_t kMaxNativeCalls = 32;
+    static constexpr std::size_t kMaxNativeCalls = 128;
     NativeCallCounter& native_call_counter(const std::string& name);
     // The first reason wins: a crash report says more than the exit status that follows it.
     void note_guest_exit(const std::string& reason);

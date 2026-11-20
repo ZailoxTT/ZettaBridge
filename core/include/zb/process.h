@@ -73,6 +73,7 @@ public:
                               std::uint32_t parent_tid_addr, std::uint32_t tls, std::uint32_t child_tid_addr);
     // Real guest threads; borrowers are not counted.
     std::size_t thread_count() const;
+    std::string pending_signal_summary() const;
     // True when this guest thread is a borrower created by create_borrower, i.e. a host thread
     // that entered the guest on a leased carrier, and false for a real guest pthread.
     bool is_borrower(const GuestThread& thread) const;

@@ -15,6 +15,7 @@
 #include <thread>
 
 #include "zb/host_jni.h"
+#include "zb/library_runtime.h"
 #include "zb/runtime_report.h"
 #include "zb/syscalls.h"
 
@@ -169,7 +170,7 @@ std::string thread_kernel_state(std::int32_t tid) {
 bool is_platform_thread(const char* name) {
     static const char* const kNoise[] = {"binder:", "Jit thread pool", "Profile Saver", "ADB-JDWP",
                                          "Signal Catcher", "perfetto", "HeapTaskDaemon",
-                                         "ReferenceQueueD", "FinalizerDaemon", "FinalizerWatchd",
+                                         "ReferenceQueueD", "FinalizerWatchd",
                                          "hwuiTask", "RenderThread", "queued-work-loo", "Timer-",
                                          "GPU completion", "SurfaceSyncGrou"};
     for (const char* prefix : kNoise) {
@@ -331,20 +332,21 @@ bool HangWatchdog::sample(Clock::time_point now) {
     return true;
 }
 
-void HangWatchdog::run_forever() {
+void HangWatchdog::run_forever(const LibraryRuntime& runtime) {
     for (;;) {
         std::this_thread::sleep_for(kInterval);
         sample(Clock::now());
+        runtime_report().note_watch_detail("pending-signals", runtime.pending_signal_summary());
     }
 }
 
-void start_hang_watchdog() {
+void start_hang_watchdog(const LibraryRuntime& runtime) {
     static std::atomic<bool> started{false};
     bool expected = false;
     if (!started.compare_exchange_strong(expected, true, std::memory_order_relaxed)) return;
-    std::thread([]() {
+    std::thread([&runtime]() {
         HangWatchdog watchdog;
-        watchdog.run_forever();
+        watchdog.run_forever(runtime);
     }).detach();
 }
 

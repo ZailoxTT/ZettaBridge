@@ -503,7 +503,7 @@ bool GuestJniEngine::start(const LibraryRuntimeOptions& options, std::string& er
         return false;
     }
     // Process-lifetime, like the runtime itself: no shutdown path, started once.
-    start_hang_watchdog();
+    start_hang_watchdog(*runtime_);
     return true;
 }
 

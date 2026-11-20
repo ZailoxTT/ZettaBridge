@@ -2065,3 +2065,26 @@ and signed release build pass. The device still needs a gameplay and
 background/resume retest. Revisit ZIP cache import once a sample layout is known.
 
 Launcher SHA-256: 09feb9309221210d98879299bdbd5289e212505c2f6e666a5a58b295010a5ce8.
+
+### Finalizer timeout during the Unity hang
+
+On the 1afde48 APK the render thread again reached Mono's semaphore wait
+loop. The same run crashed after ART waited ten seconds for
+ReflectionHelper.nativeProxyFinalize. Both nativeRender and another JNI call
+were in flight. The report shows EGL teardown followed by onResume, so it
+does not isolate either event as the trigger.
+
+The watchdog now reports queued guest signals with the guest and host TIDs
+and distinguishes a borrower outside a guest call from one in a blocking
+syscall. The census includes FinalizerDaemon. The JNI census retains up to
+128 names so the 40 Unity registrations fit without "(other)". The library
+runtime test sends a signal from the guest service to an idle borrower,
+checks the reported TIDs and pending state, and verifies delivery on
+guest reentry. Host suite 54/54, guest suite, and signed APK verification pass.
+
+Capture native-pending, watch-pending-signals, and watch-render from the
+next failed run. A steady pending mask on an idle borrower would identify a
+signal waiting for JNI reentry. The new test establishes that this can
+happen. Device evidence is still needed to connect it to this freeze.
+
+Launcher SHA-256: bffbebd93611a08b074960fec1d6fc11941932245d3e6e8e8ae1c2e19e0b0e57.

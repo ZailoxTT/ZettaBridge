@@ -455,11 +455,26 @@ int main(int argc, char** argv) {
     // tgkill to the borrowed carrier's tid is delivered on the borrower during the call.
     const auto installed = first->call(symbol("zb_probe_install_usr1"), zb::GuestCall{});
     CHECK(installed && installed->r0 == 0);
-    const auto killed = first->call(symbol("zb_probe_tgkill_self"), args1(SIGUSR1));
+    const auto tgkill = symbol("zb_probe_tgkill");
+    const auto killed = first->call(tgkill, args1(SIGUSR1));
     CHECK(killed && killed->r0 == 0);
     CHECK(read32(runtime, symbol("zb_usr1_count")) == 1);
     CHECK(read32(runtime, symbol("zb_usr1_tid")) == tid->r0);
     CHECK(read32(runtime, symbol("zb_usr1_tls")) == tls->r0);
+
+    // A signal sent while the owner is back in host code waits for its next guest entry.
+    zb::GuestCall send_usr1 = args1(SIGUSR1);
+    send_usr1.regs[1] = tid->r0;
+    const auto queued = runtime.call_on_service(tgkill, send_usr1);
+    CHECK(queued && queued->r0 == 0);
+    const auto owner_tid = ::syscall(SYS_gettid);
+    CHECK(runtime.pending_signal_summary().find("guest=" + std::to_string(tid->r0) +
+                                                " host=" + std::to_string(owner_tid) + " idle mask=") !=
+          std::string::npos);
+    CHECK(read32(runtime, symbol("zb_usr1_count")) == 1);
+    CHECK(first->call(return_i, zb::GuestCall{}));
+    CHECK(read32(runtime, symbol("zb_usr1_count")) == 2);
+    CHECK(runtime.pending_signal_summary() == "(none)");
 
     // setitimer from a borrower: SIGALRM is process-directed and reaches the parked service.
     const auto armed_on_carrier = first->call(arm_alarm, args1(20000));

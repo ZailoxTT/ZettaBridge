@@ -100,7 +100,8 @@ public:
     // stops its threads with a signal (the Boehm collector of IL2CPP does) never proceeds.
     void begin_blocking();
     void end_blocking();
-    bool blocking() const { return blocking_host_tid_.load() != 0; }
+    bool blocking() const { return blocking_host_tid() != 0; }
+    std::int32_t blocking_host_tid() const { return blocking_host_tid_.load(); }
     // Breaks this thread's blocking host syscall, if it is in one. Async-signal-safe.
     void interrupt();
 
@@ -133,8 +134,11 @@ public:
     int call_depth = 0;
     // Code cache size for threads this thread clones; 0 selects kDefaultCodeCacheSize.
     std::size_t child_code_cache_size = 0;
-    // Host tid of the host thread running this guest thread.
+    // Guest-visible tid. A borrower retains the parked carrier's tid.
     std::int32_t tid = 0;
+    // Published before borrower registration. The activity flag tracks the outer call only.
+    std::int32_t borrower_host_tid = 0;
+    std::atomic<bool> borrower_in_guest{false};
 
     std::uint8_t MemoryRead8(std::uint32_t vaddr) override;
     std::uint16_t MemoryRead16(std::uint32_t vaddr) override;

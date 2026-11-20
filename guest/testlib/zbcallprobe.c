@@ -113,9 +113,9 @@ API int32_t zb_probe_install_usr1(void) {
     return sigaction(SIGUSR1, &sa, NULL);
 }
 
-/* tgkill to this thread's own (cached) tid. */
-API int32_t zb_probe_tgkill_self(int32_t sig) {
-    return (int32_t)syscall(__NR_tgkill, getpid(), gettid(), sig);
+/* A zero target selects this thread's own (cached) tid. */
+API int32_t zb_probe_tgkill(int32_t sig, int32_t tid) {
+    return (int32_t)syscall(__NR_tgkill, getpid(), tid != 0 ? tid : gettid(), sig);
 }
 
 DATA volatile int32_t zb_alarm_count;

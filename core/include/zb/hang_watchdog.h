@@ -8,6 +8,7 @@
 
 namespace zb {
 
+class LibraryRuntime;
 // Hang diagnostics: a guest that stops making progress (gray screen, no crash) leaves nothing
 // in the crash report, because nothing crashed. This records, per guest thread, the last thing
 // it did on its way out of translated code, and a background thread periodically checks whether
@@ -72,7 +73,7 @@ public:
     bool sample(Clock::time_point now);
 
     // Runs sample() every kInterval, forever, on the calling thread.
-    [[noreturn]] void run_forever();
+    [[noreturn]] void run_forever(const LibraryRuntime& runtime);
 
 private:
     struct State {
@@ -94,6 +95,6 @@ private:
 
 // Starts the watchdog on a detached background thread, once per process. GuestJniEngine calls
 // this when the runtime starts; the runtime is process-lifetime, so there is no shutdown path.
-void start_hang_watchdog();
+void start_hang_watchdog(const LibraryRuntime& runtime);
 
 }  // namespace zb
