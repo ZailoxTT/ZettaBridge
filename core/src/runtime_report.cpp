@@ -577,6 +577,15 @@ std::string RuntimeReport::text() const {
         }
         if (shown == 0) out += " (none)";
         out += " total=" + std::to_string(total) + '\n';
+
+        std::string pending;
+        for (const NativeCallEntry& entry : native_calls_) {
+            const auto n = entry.counter->pending.load(std::memory_order_relaxed);
+            if (n != 0) pending += " " + entry.name + "=" + std::to_string(n);
+        }
+        const auto overflow = native_calls_overflow_.pending.load(std::memory_order_relaxed);
+        if (overflow != 0) pending += " (other)=" + std::to_string(overflow);
+        out += "native-pending:" + (pending.empty() ? std::string(" (none)") : pending) + '\n';
     }
 
     if (opened_paths_.empty()) {
@@ -668,6 +677,7 @@ void RuntimeReport::clear() {
     signal_last_delivery_.clear();
     native_calls_.clear();
     native_calls_overflow_.count.store(0, std::memory_order_relaxed);
+    native_calls_overflow_.pending.store(0, std::memory_order_relaxed);
     opened_paths_.clear();
     failed_opens_.clear();
     gl_call_total_ = 0;

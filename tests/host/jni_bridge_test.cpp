@@ -195,13 +195,17 @@ std::int32_t run_probe(Bridge& bridge, const char* name, MockJvm::ObjectId argum
     const auto env = bridge.vm->thread_env();
     MockJvm::NativeFrame frame(*bridge.vm, env);
     const auto ref = argument != 0 ? frame.local(argument) : 0;
+    auto& counter = zb::runtime_report().native_call_counter(name);
     const auto result =
         bridge.jni->call_native(env, 'I', function, [&](std::uint32_t guest_env, const zb::RefToHandle& to_handle) {
+            CHECK(zb::runtime_report().text().find(std::string("native-pending: ") + name + "=1") !=
+                  std::string::npos);
             zb::GuestCall call;
             call.regs = {guest_env, to_handle(ref), 0, 0};
             return call;
-        });
+        }, &counter);
     CHECK(result);
+    CHECK(zb::runtime_report().text().find("native-pending: (none)") != std::string::npos);
     const auto line = static_cast<std::int32_t>(result->guest.r0);
     if (line != 0) std::fprintf(stderr, "%s failed at zbjniprobe.c:%d\n", name, line);
     // The call's frame released everything the guest created; only the argument is left.

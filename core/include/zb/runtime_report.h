@@ -14,10 +14,10 @@ namespace zb {
 
 // A stable per-bound-native-method call counter (Java -> guest native-call census). HostJni
 // creates one per method when it is bound (register_native) and caches the pointer in the
-// method's thunk slot, so every later Java -> guest call costs one relaxed atomic add and no
-// lock. RuntimeReport owns the counters so they outlive the HostJni slot table in reports.
+// method's thunk slot. RuntimeReport owns the counters so they outlive the HostJni slot table.
 struct NativeCallCounter {
     std::atomic<std::uint64_t> count{0};
+    std::atomic<std::uint64_t> pending{0};
 };
 
 // Diagnostics that must survive a silent :guest death. OxygenOS drops third-party logcat

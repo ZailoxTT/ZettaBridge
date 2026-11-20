@@ -1964,3 +1964,18 @@ using the host package fails. Both base and derived contexts use the fallback.
 The signed launcher APK includes both fixes. SHA-256:
 79789fab5ef757f4ccd7953fd0e6e15de99a2fef640038f651c6be79bc29bdb7.
 Portal needs a device retest of the downloader. The license logic still runs in the guest.
+
+### Follow-up device results
+
+Portal passed the resource lookup. Its downloader now reaches PendingIntent.getActivity and
+passes FLAG_UPDATE_CURRENT alone. Android requires an explicit mutability flag because the
+launcher targets API 35. The check runs in framework Java before the system service boundary.
+Fixing this needs a guest call-site adapter that supplies the correct mutability flag.
+
+Thomas still froze after 457 swaps. It dequeued and finished all 299 native input events.
+There were only 39 direct platform ident results and 176 probe results. The previous
+readiness flood is gone in this capture. The new native-pending report line lists Java-to-guest
+calls that have entered but not returned. Read it after the freeze to distinguish a blocked
+native call from Java ceasing to schedule renders. The JNI bridge integration test checks
+the counter inside and after a real guest call. Host 54/54 and signed release build pass.
+APK SHA-256: 17d395c98409736556712864b3f4b7a19c01d4455c9f53c629008c3758eafca4.
