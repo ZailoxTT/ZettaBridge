@@ -17,17 +17,8 @@ ZettaBridge runs such an app **inside its own process**:
 
 No root, no custom ROM, no system image changes.
 
-> **Early development.** Jelly Jump 1.4 works in the [v0.1.1-test.1 prerelease](https://github.com/ZailoxTT/ZettaBridge/releases/tag/v0.1.1-test.1).
+> **Early development.** See [Releases](https://github.com/ZailoxTT/ZettaBridge/releases) for builds.
 > Compatibility varies by app. Include the Last run report when filing a bug.
-
-## Orange Roulette, a 2014 armeabi game, on a phone with no 32-bit CPU
-
-| Intro | Menu | Gameplay |
-|---|---|---|
-| ![Intro screen](images/screenshots/intro.jpg) | ![Main menu](images/screenshots/menu.jpg) | ![Gameplay](images/screenshots/gameplay.jpg) |
-
-Every pixel above was drawn by translated 32-bit ARM code: a OnePlus 13 (Snapdragon 8 Elite) has
-no AArch32 execution state, so the game cannot start on it at all without ZettaBridge.
 
 ## How it works
 
@@ -71,14 +62,8 @@ ZettaBridge launcher (arm64 app)
   - library loading and `Java_*` binding.
 - **GLES 2.0 and 3.0 passthrough, EGL and ANativeWindow.** Guests create their own GL context
   on their own thread; ~490 entry points are generated from the Khronos registry.
-- **Games running on the phone.**
-  - *Orange Roulette* (2014, Haxe/OpenFL): menus and gameplay, with sound.
-  - *Flappy Bird* (AndEngine): playable.
-  - *Jelly Jump 1.4* starts and is playable through `NativeActivity`.
-  - *Lane Racer* and *Thomas Was Alone* start and render through `NativeActivity`.
-    Thomas Was Alone can still freeze during play.
-  - A modern Flutter app starts, runs its Dart code, presents frames and takes touch input,
-    though rendering is not yet complete.
+- **NativeActivity.** Activity lifecycle, native windows and input are bridged to the guest.
+- **Flutter.** The engine can start, render frames and receive touch input. Rendering support is partial.
 
 Not supported yet: Vulkan and
 anything that needs a real package installation.
@@ -88,7 +73,7 @@ anything that needs a real package installation.
 | Milestone | What it brings |
 |---|---|
 | **v0.1** | 32-bit apps whose native libraries do not draw on their own: utilities and apps using old native libs for crypto, image processing, parsers, databases. |
-| **v0.2** | OpenGL ES passthrough and Android assets: simple 2D games, starting with Orange Roulette. |
+| **v0.2** | OpenGL ES passthrough and Android assets for simple 2D games. |
 | **v0.3+** | 3D games and performance work: GL call batching, faster floating point, JNI fast paths |
 | exploring | x86 / x86_64 guests through [Box64](https://github.com/ptitSeb/box64) |
 

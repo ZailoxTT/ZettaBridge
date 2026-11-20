@@ -1939,3 +1939,6 @@ failed before and passes after the change.
 Host suite 54/54, Android link and signed launcher build pass. Repeat intro taps and
 gameplay on device to determine whether the freeze remains.
 APK SHA-256: 8da8a2b7189d31acb63ff600974078fe2daf76095f0cd0b4836bbfb55c9fe589.
+
+Public README files and stable release notes describe compatibility by capability.
+Keep individual game results in issues, device test notes, or prerelease notes when needed.
