@@ -37,7 +37,7 @@ final class PluginContext extends ContextWrapper {
     private LayoutInflater inflater;
 
     PluginContext(Context base, LoadedPlugin plugin) {
-        this(base, plugin, plugin.resources);
+        this(base, plugin, resourcesFor(base, plugin, plugin.resources));
     }
 
     private PluginContext(Context base, LoadedPlugin plugin, Resources resources) {
@@ -48,11 +48,26 @@ final class PluginContext extends ContextWrapper {
 
     /** Wraps a context derived by the framework, with plugin resources in its configuration. */
     private PluginContext derived(Context frameworkContext) {
-        Resources host = frameworkContext.getResources();
-        @SuppressWarnings("deprecation")
-        Resources pluginResources = new Resources(plugin.resources.getAssets(), host.getDisplayMetrics(),
-                host.getConfiguration());
-        return new PluginContext(frameworkContext, plugin, pluginResources);
+        return new PluginContext(frameworkContext, plugin,
+                resourcesFor(frameworkContext, plugin, frameworkContext.getResources()));
+    }
+
+    @SuppressWarnings("deprecation")
+    private static Resources resourcesFor(Context base, LoadedPlugin plugin, Resources configuration) {
+        String hostPackage = base.getPackageName();
+        String pluginPackage = plugin.packageName;
+        return new Resources(plugin.resources.getAssets(), configuration.getDisplayMetrics(),
+                configuration.getConfiguration()) {
+            @Override
+            public int getIdentifier(String name, String defType, String defPackage) {
+                int id = super.getIdentifier(name, defType, defPackage);
+                // Some guests supply Context.getPackageName() as the resource namespace.
+                if (id == 0 && name != null && name.indexOf(':') < 0 && hostPackage.equals(defPackage)) {
+                    return super.getIdentifier(name, defType, pluginPackage);
+                }
+                return id;
+            }
+        };
     }
 
     @Override

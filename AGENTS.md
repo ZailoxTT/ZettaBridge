@@ -1953,3 +1953,14 @@ registration on the polling looper. The guest gets a wake for duplicate readines
 until it dequeues an event. Nonmatching or ambiguous results keep their original behavior.
 The host test covers direct and probe deduplication and dequeue rearming. Host 54/54.
 A device retest still needs to establish whether the freeze is fixed.
+
+### Plugin resource names qualified by the launcher context
+
+Portal v79's Java downloader calls getIdentifier("raw/license", "raw", getPackageName()).
+The APK contains the resource under its own package. The plugin Context returns the host
+package name for Android identity checks, so this lookup returned zero and openRawResource
+threw. Plugin resources now retry unqualified names in the plugin package when a lookup
+using the host package fails. Both base and derived contexts use the fallback.
+The signed launcher APK includes both fixes. SHA-256:
+79789fab5ef757f4ccd7953fd0e6e15de99a2fef640038f651c6be79bc29bdb7.
+Portal needs a device retest of the downloader. The license logic still runs in the guest.
