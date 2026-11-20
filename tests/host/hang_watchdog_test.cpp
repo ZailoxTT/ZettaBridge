@@ -2,6 +2,7 @@
 // with a fake snapshot source and an explicit clock so it needs no real guest thread or timing.
 #include <chrono>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "check.h"
@@ -17,6 +18,12 @@ bool contains(const std::string& text, const std::string& part) {
 }  // namespace
 
 int main() {
+    const auto calling_tid = zb::current_watch_tid();
+    std::thread other([&] {
+        const auto tid = zb::current_watch_tid();
+        CHECK(tid > 0 && tid != calling_tid && tid == zb::current_watch_tid());
+    });
+    other.join();
     // record_thread_activity / snapshot_thread_activity: a fresh tid claims a slot, repeated
     // calls bump the counter and update the recorded activity in place.
     zb::record_thread_activity(9001, zb::ThreadActivityKind::kSyscall, 3);
@@ -129,7 +136,7 @@ int main() {
     const auto latest = zb::runtime_report().text();
     CHECK(contains(latest, "watch-latest: 999=host:0x2a(inside)"));
     CHECK(contains(latest, "pc=0x00001234 lr=0x00005678"));
-    CHECK(contains(latest, "watch-render: guest-tid=109"));
+    CHECK(contains(latest, "watch-render: host-tid=109"));
 
     std::puts("hang_watchdog_test: ok");
     return 0;

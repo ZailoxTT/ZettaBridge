@@ -2029,3 +2029,20 @@ and rejecting foreign or unsafe filenames. The Portal test copy in Download
 in standard expansion filenames. Portal's existing detection requires both main
 and patch files. Neither game data nor the modified APK is tracked or published.
 On device, import the test APK, then import each original expansion file once.
+
+### Distinguish the Unity render thread from its parked carrier
+
+The next Thomas report showed 1,441 swaps and nativeRender and fmodProcess in
+flight. The old watch-render entry showed a nanosleep loop from the carrier:
+the borrowed guest thread and the parked carrier share a guest TID but execute
+on different host threads. Key watchdog activity and render selection by Linux
+host TID so watch-render matches UnityMain in the thread census. Signal routing
+still uses guest TIDs. This is a diagnostic change. Capture watch-render and
+native-pending while the game is frozen in the foreground, before pausing it.
+
+Host suite 54/54, launcher contracts, Android release build, and both APK
+signature checks pass. Device verification of OBB import and the watchdog fix
+is pending. The Portal download service and its Pause crash remain open.
+
+Launcher SHA-256: 2667744ad1744be65491b82084db053c4ce4fe28d08dda268cb8110e938aa1b1.
+Portal cache test SHA-256: a71fd602c7710841192832cc4c39441923b07945775d7ee8eb7d96ceebaebef3.

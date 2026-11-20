@@ -20,7 +20,11 @@ enum class ThreadActivityKind : std::uint8_t {
     kHostCall = 2,
 };
 
-// Records that guest thread `tid` just performed a syscall (`id` = syscall number) or a host
+// The Android/Linux tid of the executing thread. A borrower and its parked carrier
+// share a guest tid but run on different host threads.
+std::int32_t current_watch_tid();
+
+// Records that host thread `tid` just performed a guest syscall (`id` = syscall number) or a host
 // call (`id` = host-call index). Lock-free, allocation-free, safe from any thread: called on
 // every syscall and every host call, so it must stay cheap.
 void record_thread_activity(std::int32_t tid, ThreadActivityKind kind, std::uint32_t id,
@@ -31,7 +35,7 @@ void record_thread_activity(std::int32_t tid, ThreadActivityKind kind, std::uint
 // that simply stopped calling out.
 void record_thread_activity_done(std::int32_t tid);
 // Tracks the guest thread presenting frames, even when idle workers fill the general report.
-void record_render_thread(std::int32_t guest_tid);
+void record_render_thread(std::int32_t host_tid);
 
 struct ThreadActivitySample {
     std::int32_t tid = 0;

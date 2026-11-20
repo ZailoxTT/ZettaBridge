@@ -4,6 +4,8 @@
 #include "zb/hang_watchdog.h"
 
 #include <dirent.h>
+#include <sys/syscall.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <atomic>
@@ -20,7 +22,7 @@ namespace zb {
 
 namespace {
 
-// Fixed-size, never-grows table of per-thread activity slots. A guest thread claims a slot the
+// Fixed-size, never-grows table of per-thread activity slots. A host thread claims a slot the
 // first time it is seen and keeps it (tids are not reused across a run in a way that matters for
 // diagnostics); a slot is identified by `tid` with 0 meaning free.
 constexpr std::size_t kMaxSlots = 256;
@@ -40,8 +42,13 @@ std::atomic<std::int32_t> g_render_thread{0};
 
 }  // namespace
 
-void record_render_thread(std::int32_t guest_tid) {
-    g_render_thread.store(guest_tid, std::memory_order_relaxed);
+std::int32_t current_watch_tid() {
+    static thread_local const auto tid = static_cast<std::int32_t>(::syscall(SYS_gettid));
+    return tid;
+}
+
+void record_render_thread(std::int32_t host_tid) {
+    g_render_thread.store(host_tid, std::memory_order_relaxed);
 }
 
 void record_thread_activity(std::int32_t tid, ThreadActivityKind kind, std::uint32_t id,
@@ -270,7 +277,7 @@ bool HangWatchdog::sample(Clock::time_point now) {
         ThreadActivitySample activity{state.tid, state.kind, state.id, state.counter, state.in_progress};
         const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(now - state.since).count();
         char detail[192];
-        std::snprintf(detail, sizeof detail, "guest-tid=%d %s x%llu unchanged=%llds pc=0x%08x lr=0x%08x",
+        std::snprintf(detail, sizeof detail, "host-tid=%d %s x%llu unchanged=%llds pc=0x%08x lr=0x%08x",
                       state.tid, describe_thread_activity(activity).c_str(),
                       static_cast<unsigned long long>(state.counter), static_cast<long long>(seconds),
                       state.pc, state.lr);

@@ -227,7 +227,7 @@ std::string egl_recent_calls() {
 
 bool HostEgl::handle_host_call(std::uint32_t index, GuestThread& thread) {
     if (index < kEglHostCallFirst || index > kEglHostCallLast) return false;
-    if (index == ZB_EGL_HC_eglSwapBuffers) record_render_thread(thread.tid);
+    if (index == ZB_EGL_HC_eglSwapBuffers) record_render_thread(current_watch_tid());
     // A rejection never reaches the driver, so its error is served from here and takes
     // precedence over the driver's own sticky error.
     if (index == ZB_EGL_HC_eglGetError && t_pending_error != kEglSuccess) {
