@@ -1,9 +1,7 @@
-## I’ve had very little free time over the last couple of weeks. Some fixes are still sitting on my device. Don’t worry – development is continuing, and your bug reports with logs are a great help.
-
 # ZettaBridge
 
 **Run 32-bit Android apps on 64-bit-only ARM phones.**
-An source-available ARM32 -> ARM64 native code translator and app launcher.
+A source-available ARM32 -> ARM64 native code translator and app launcher.
 
 [Читать на русском](README.ru.md)
 
@@ -19,7 +17,8 @@ ZettaBridge runs such an app **inside its own process**:
 
 No root, no custom ROM, no system image changes.
 
-> **Status: early development.** Not usable by end users yet. See [Roadmap](#roadmap).
+> **Early development.** Jelly Jump 1.4 works in the [v0.1.1-test.1 prerelease](https://github.com/ZailoxTT/ZettaBridge/releases/tag/v0.1.1-test.1).
+> Compatibility varies by app. Include the Last run report when filing a bug.
 
 ## Orange Roulette, a 2014 armeabi game, on a phone with no 32-bit CPU
 
@@ -75,10 +74,9 @@ ZettaBridge launcher (arm64 app)
 - **Games running on the phone.**
   - *Orange Roulette* (2014, Haxe/OpenFL): menus and gameplay, with sound.
   - *Flappy Bird* (AndEngine): playable.
-  - **Unity games through `NativeActivity`** (October 2026): *Lane Racer* and
-    *Thomas Was Alone* (Unity 4.5, Mono) start, render and are playable with touch controls.
-    Both still end the process after a while, which is being worked on; once that is fixed this
-    goes into a release.
+  - *Jelly Jump 1.4* starts and is playable through `NativeActivity`.
+  - *Lane Racer* and *Thomas Was Alone* start and render through `NativeActivity`.
+    Thomas Was Alone can still freeze during play.
   - A modern Flutter app starts, runs its Dart code, presents frames and takes touch input,
     though rendering is not yet complete.
 
