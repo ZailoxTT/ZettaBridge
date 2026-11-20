@@ -2131,3 +2131,8 @@ issues 32 and 35 open until the first load failure is captured on the new
 build. Issue 13 has additional OBB-path and Java compatibility work.
 
 Launcher SHA-256: a2527cbadd410fbf0d26bbaa31fb346ec15b75483a67b44877563ef9d85f6c33.
+
+The user verified updating over the previous version and returning after
+backgrounding on the 0.1.1 candidate. Bilingual stable release notes are staged
+locally at build/release-v0.1.1.md. The notes describe launcher capabilities
+and omit individual titles. The remote main and GitHub release are unchanged.
