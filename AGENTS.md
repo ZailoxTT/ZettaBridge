@@ -1871,3 +1871,18 @@ arm32 r0/r1 64-bit result, and AndroidAssetBackend obtains the full 64-bit lengt
 checks a valid result and a closed handle. Host suite 54/54 and Android native link pass. This
 addresses the reported missing call, but the game has not yet been tested with the fix; do not
 claim the abort is resolved without a device run. Rebuild the release APK and test issue 21.
+
+## 2026-11-20: Fix the input queue stack argument
+
+Thomas Was Alone now reports no guest exit but still hangs. The device report had 193,475
+looper ident returns, 2,125 swaps and no native input dequeue line. The attach dispatcher
+read the fifth AInputQueue_attachLooper argument from r4. The guest stub does not shuffle
+registers, so AAPCS32 places that argument at [sp]. Read the word from guest memory and
+preserve it for the real looper and for the readiness probe. The test failed with distinct
+values in r4 and [sp] before the fix. The full host suite passes (54/54).
+
+The signed release APK in the launcher release output directory contains the verified native
+artifacts. SHA-256: 9ec542b392e42ac2ae4e80c4b882b33a7de07938f0cc3a8f0f01f320f4b01880.
+Repeat the same inputs in Thomas. If it still hangs, compare jni-input-queue and looper-polls.
+Issue 24's missing ANativeActivity_onCreate export is present in the APK. Jelly Jump gameplay
+was not tested. Issue 21's full game startup still needs a device run.

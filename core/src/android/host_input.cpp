@@ -215,7 +215,11 @@ bool HostInput::handle_host_call(std::uint32_t index, GuestThread& thread) {
     case ZB_INPUT_HC_AInputQueue_attachLooper: {
         void* queue = live_queue(regs[0]);
         if (queue == nullptr) { regs[0] = 0; return reject("AInputQueue_attachLooper", regs[0]); }
-        // regs[1] is the guest's looper, regs[3] and regs[4] its callback and data. A host
+        const auto* stack = runtime_.memory().host_ptr(regs[13], sizeof(std::uint32_t), kPageRead);
+        if (stack == nullptr) return reject("AInputQueue_attachLooper stack", regs[13]);
+        std::uint32_t data;
+        std::memcpy(&data, stack, sizeof data);
+        // regs[1] is the guest's looper and regs[3] is its callback. A host
         // AInputQueue has no descriptor we could poll, so this thread must first have a real
         // Android looper; the queue then goes to it and the guest's own poll picks it up.
         std::uint64_t real_looper = 0;
@@ -234,10 +238,10 @@ bool HostInput::handle_host_call(std::uint32_t index, GuestThread& thread) {
         // The guest's data travels as an opaque value and comes back from the poll unchanged, so
         // the guest recognizes its own source. Nothing of the host crosses here.
         backend_.queue_attach_looper(queue, static_cast<std::int32_t>(regs[2]),
-                                     reinterpret_cast<void*>(static_cast<std::uintptr_t>(regs[4])), real_looper);
+                                     reinterpret_cast<void*>(static_cast<std::uintptr_t>(data)), real_looper);
         {
             std::lock_guard<std::mutex> lock(mutex_);
-            attachments_[regs[0]] = Attachment{real_looper, static_cast<std::int32_t>(regs[2]), regs[4]};
+            attachments_[regs[0]] = Attachment{real_looper, static_cast<std::int32_t>(regs[2]), data};
         }
         char detail[160];
         std::snprintf(detail, sizeof detail, "ident %u looper 0x%08x owner-tid %d caller-tid %d%s",

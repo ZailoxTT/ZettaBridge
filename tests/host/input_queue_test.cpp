@@ -114,8 +114,12 @@ int main() {
     // Attaching ties the queue to this thread's real looper; detaching undoes it.
     // The guest's own data word travels with the registration and comes back from the poll, so
     // the guest recognizes its source; nothing of the host crosses.
+    thread.regs()[13] = kData + 0x100;
+    thread.regs()[4] = 0xBAD;
+    const std::uint32_t input_data = 0xCAFE;
+    std::memcpy(runtime.memory().base() + thread.regs()[13], &input_data, sizeof input_data);
     CHECK(call_input(input, thread, zb::ZB_INPUT_HC_AInputQueue_attachLooper,
-                     {queue, 0x1234, 42, 0, 0xCAFE}) == 0);
+                     {queue, 0x1234, 42, 0}) == 0);
     CHECK(backend.attached && backend.attached_ident == 42);
     CHECK(backend.attached_data == reinterpret_cast<void*>(static_cast<std::uintptr_t>(0xCAFE)));
     CHECK(backend.attached_looper == 0x5100);
