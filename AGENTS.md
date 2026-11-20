@@ -1998,3 +1998,22 @@ resource table and native libraries are byte-identical to the original. The copy
 a local test signature. No game APK is staged or published. Import the copy in ZettaBridge
 to test the downloader. SHA-256: ed0a4552081c765b45f533ec9617403ba75d5daa939cf157b7d50b1e40529812.
 There was no connected Android device available for either test.
+
+### Reserve watchdog space and follow the actual render thread
+
+The next Thomas report contained six thread census chunks, a platform summary, and
+watch-1. Those eight keys filled the report's watchdog budget before watch-latest
+could be added. The report now has room for the census and all hang samples. The
+guest thread that calls eglSwapBuffers also gets a separate watch-render entry with
+its last syscall or host call, PC, LR and time unchanged. The regression test fills
+the report with census entries and checks both the rolling and the render sample.
+
+Portal again reported the same PendingIntent call-site exception. The patched APK's
+decoded call site contains 0x0c000000. The device stack does not identify which
+guest APK was loaded. The verified test copy is now in
+/sdcard/Download/Portal-79-pending-intent-test.apk. Reimport that exact file and
+verify the launcher reports a successful import before retrying. Its digest matches
+the local test copy above.
+
+Host suite 54/54 and signed launcher build pass. Launcher SHA-256:
+e0771abc64ce60272d66cc60cf71318e56d2fecf0cba1b6fc6198d86e2a59bcb.

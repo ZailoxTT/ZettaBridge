@@ -36,8 +36,13 @@ struct Slot {
 };
 
 Slot g_slots[kMaxSlots];
+std::atomic<std::int32_t> g_render_thread{0};
 
 }  // namespace
+
+void record_render_thread(std::int32_t guest_tid) {
+    g_render_thread.store(guest_tid, std::memory_order_relaxed);
+}
 
 void record_thread_activity(std::int32_t tid, ThreadActivityKind kind, std::uint32_t id,
                             std::uint32_t pc, std::uint32_t lr) {
@@ -258,6 +263,20 @@ bool HangWatchdog::sample(Clock::time_point now) {
         next.push_back(state);
     }
     previous_ = std::move(next);
+
+    const auto render_tid = g_render_thread.load(std::memory_order_relaxed);
+    for (const State& state : previous_) {
+        if (state.tid != render_tid) continue;
+        ThreadActivitySample activity{state.tid, state.kind, state.id, state.counter, state.in_progress};
+        const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(now - state.since).count();
+        char detail[192];
+        std::snprintf(detail, sizeof detail, "guest-tid=%d %s x%llu unchanged=%llds pc=0x%08x lr=0x%08x",
+                      state.tid, describe_thread_activity(activity).c_str(),
+                      static_cast<unsigned long long>(state.counter), static_cast<long long>(seconds),
+                      state.pc, state.lr);
+        runtime_report().note_watch_detail("render", detail);
+        break;
+    }
 
     std::vector<const State*> stuck;
     for (const State& state : previous_) {

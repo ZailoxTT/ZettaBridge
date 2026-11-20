@@ -30,6 +30,8 @@ void record_thread_activity(std::int32_t tid, ThreadActivityKind kind, std::uint
 // still in progress is blocked inside our own code, which reads very differently from a guest
 // that simply stopped calling out.
 void record_thread_activity_done(std::int32_t tid);
+// Tracks the guest thread presenting frames, even when idle workers fill the general report.
+void record_render_thread(std::int32_t guest_tid);
 
 struct ThreadActivitySample {
     std::int32_t tid = 0;

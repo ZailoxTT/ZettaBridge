@@ -109,6 +109,10 @@ int main() {
     CHECK(!watchdog2.sample(now2));
     CHECK(zb::runtime_report().text().find("watch-1") == std::string::npos);
 
+    for (int i = 1; i <= 6; ++i) {
+        zb::runtime_report().note_watch_detail("threads-" + std::to_string(i), "thread census");
+    }
+    zb::runtime_report().note_watch_detail("threads-platform", "platform thread census");
     zb::HangWatchdog crowded([] {
         std::vector<zb::ThreadActivitySample> out;
         for (int tid = 100; tid < 110; ++tid) {
@@ -117,6 +121,7 @@ int main() {
         out.push_back({999, zb::ThreadActivityKind::kHostCall, 0x2a, 1, true, 0x1234, 0x5678});
         return out;
     });
+    zb::record_render_thread(109);  // Outside the general report's five slots.
     for (std::size_t i = 0; i < zb::HangWatchdog::kMaxNotes + 3; ++i) {
         crowded.sample(now);
         now += zb::HangWatchdog::kInterval;
@@ -124,6 +129,7 @@ int main() {
     const auto latest = zb::runtime_report().text();
     CHECK(contains(latest, "watch-latest: 999=host:0x2a(inside)"));
     CHECK(contains(latest, "pc=0x00001234 lr=0x00005678"));
+    CHECK(contains(latest, "watch-render: guest-tid=109"));
 
     std::puts("hang_watchdog_test: ok");
     return 0;
