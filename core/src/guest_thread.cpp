@@ -192,18 +192,21 @@ void GuestThread::invalidate(std::uint32_t addr, std::uint32_t len) {
 }
 
 void GuestThread::begin_blocking() {
-    blocking_.store(1);
+    // A borrowed guest thread keeps the carrier's guest tid while its syscalls run here.
+    static thread_local const auto host_tid = static_cast<std::int32_t>(::syscall(SYS_gettid));
+    blocking_host_tid_.store(host_tid);
 }
 
 void GuestThread::end_blocking() {
-    blocking_.store(0);
+    blocking_host_tid_.store(0);
 }
 
 void GuestThread::interrupt() {
     // seq_cst: the poster sets the pending bit before reading this flag, and the waiter sets the
     // flag before it checks for pending signals, so at least one of the two sees the other.
-    if (blocking_.load() == 0 || tid == 0) return;
-    ::syscall(SYS_tgkill, ::getpid(), tid, host_interrupt_signal());
+    const auto host_tid = blocking_host_tid_.load();
+    if (host_tid == 0) return;
+    ::syscall(SYS_tgkill, ::getpid(), host_tid, host_interrupt_signal());
 }
 
 void GuestThread::post_signal(const g::siginfo32& info) {

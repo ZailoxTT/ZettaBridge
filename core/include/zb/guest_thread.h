@@ -100,7 +100,7 @@ public:
     // stops its threads with a signal (the Boehm collector of IL2CPP does) never proceeds.
     void begin_blocking();
     void end_blocking();
-    bool blocking() const { return blocking_.load() != 0; }
+    bool blocking() const { return blocking_host_tid_.load() != 0; }
     // Breaks this thread's blocking host syscall, if it is in one. Async-signal-safe.
     void interrupt();
 
@@ -170,7 +170,7 @@ private:
     std::array<g::siginfo32, 65> pending_info_{};
     // futex word; std::atomic<std::uint32_t> has the layout of std::uint32_t.
     std::atomic<std::uint32_t> park_word_{0};
-    std::atomic<std::uint32_t> blocking_{0};
+    std::atomic<std::int32_t> blocking_host_tid_{0};
 };
 
 }  // namespace zb

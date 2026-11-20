@@ -2046,3 +2046,22 @@ is pending. The Portal download service and its Pause crash remain open.
 
 Launcher SHA-256: 2667744ad1744be65491b82084db053c4ce4fe28d08dda268cb8110e938aa1b1.
 Portal cache test SHA-256: a71fd602c7710841192832cc4c39441923b07945775d7ee8eb7d96ceebaebef3.
+
+### Interrupt blocking syscalls on the borrowing host thread
+
+The device confirmed that watch-render now points at UnityMain. Its nanosleep
+return addresses in successive reports match the call at libmono.so offset
+0x2e09e8 in the collector's semaphore wait loop. The report also shows onPause
+and EGL surface destruction, so it cannot establish the order of the original
+foreground freeze and window teardown.
+
+GuestThread::interrupt was sending the reserved host wake signal to the guest
+TID. For a borrower, that TID identifies the parked carrier, while the blocking
+syscall runs on the Java thread. The blocking section now publishes its actual
+host TID and interrupt uses it. Guest-visible signal routing still uses guest
+TIDs. The two-thread regression times out on the old code and passes with the
+fix. Host suite 54/54, five repeated library_runtime_test runs, the guest suite,
+and signed release build pass. The device still needs a gameplay and
+background/resume retest. Revisit ZIP cache import once a sample layout is known.
+
+Launcher SHA-256: 09feb9309221210d98879299bdbd5289e212505c2f6e666a5a58b295010a5ce8.
